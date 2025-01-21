@@ -232,39 +232,6 @@ const CalendarModal = ({
     );
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: any) => {
-      if (
-        hourDropdownRef.current &&
-        !hourDropdownRef.current.contains(event.target) &&
-        isHourDropdownVisible
-      ) {
-        setIsHourDropdownVisible(false);
-      }
-
-      if (
-        minuteDropdownRef.current &&
-        !minuteDropdownRef.current.contains(event.target) &&
-        isMinuteDropdownVisible
-      ) {
-        setIsMinuteDropdownVisible(false);
-      }
-    };
-
-    // Add event listener when the component mounts
-    document.addEventListener("mousedown", handleClickOutside);
-
-    // Clean up the event listener when the component unmounts
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [
-    isHourDropdownVisible,
-    isMinuteDropdownVisible,
-    hourDropdownRef,
-    minuteDropdownRef,
-  ]);
-
   return (
     <Modal visible={isVisible} animationType="slide" transparent>
       <TouchableWithoutFeedback

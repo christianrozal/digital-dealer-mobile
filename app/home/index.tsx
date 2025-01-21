@@ -1,8 +1,39 @@
-import { Link } from "expo-router";
-import React from "react";
-import { View, Text, Image, ScrollView, TouchableOpacity } from "react-native";
+import ButtonComponent from "@/components/button";
+import { Link, router } from "expo-router";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
+import { Client, Account } from "react-native-appwrite";
+
+// Initialize Appwrite client (make sure to set your actual endpoint and project ID)
+const client = new Client()
+  .setEndpoint("https://cloud.appwrite.io/v1")
+  .setProject("6780c774003170c68252");
+
+const account = new Account(client);
 
 const HomeScreen = () => {
+  const [loggedInUser, setLoggedInUser] = useState(null);
+
+  const handleLogout = async () => {
+    try {
+      await account.deleteSession("current");
+      setLoggedInUser(null);
+      console.log("Successfully logged out!");
+      router.replace("/login"); // Redirect to the login screen
+    } catch (error) {
+      console.error("Logout Error:", error);
+      // Handle logout errors here
+      alert("Logout failed. Please try again.");
+    }
+  };
+
   return (
     <>
       <ScrollView className="flex-1 text-xs bg-white px-5 ">
@@ -31,9 +62,7 @@ const HomeScreen = () => {
           </Text>
           {/* Today's Scans */}
           <View className="flex-row justify-between mt-3 bg-color3 p-3 rounded-md">
-            <Text className="text-xs font-bold">
-              Today &#40;3 Dec 2024&#41;
-            </Text>
+            <Text className="text-xs font-bold">Today (3 Dec 2024)</Text>
             <Text className="text-xs">
               #scans: <Text className="font-bold">3</Text>
             </Text>
@@ -84,35 +113,8 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation Bar */}
-      <View className="fixed bottom-0 w-full flex-row justify-center gap-10 items-center py-2 mt-5 shadow-md">
-        <TouchableOpacity className="flex items-center">
-          <Image
-            source={require("@/assets/images/activity-icon.webp")}
-            style={{ width: 24, height: 24 }}
-          />
-          <Text className="text-[10px] text-gray-500 font-semibold mt-1">
-            Activity
-          </Text>
-        </TouchableOpacity>
-        {/* Qr Screen */}
-        <Link href="./home/qr-scanner/customer-assignment/">
-          <TouchableOpacity>
-            <Image
-              source={require("@/assets/images/scan-icon.webp")}
-              style={{ width: 51, height: 51 }}
-            />
-          </TouchableOpacity>
-        </Link>
-        <TouchableOpacity className="flex items-center">
-          <Image
-            source={require("@/assets/images/customers-icon.webp")}
-            style={{ width: 24, height: 24 }}
-          />
-          <Text className="text-[10px] text-gray-500 font-semibold mt-1">
-            Customers
-          </Text>
-        </TouchableOpacity>
+      <View className="px-5 mt-5">
+        <ButtonComponent label="Logout" var2 onPress={handleLogout} />
       </View>
     </>
   );

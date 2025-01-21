@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Image, TextInput } from "react-native";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { Checkbox, RadioButton } from "react-native-paper";
 import dayjs from "dayjs";
 import CalendarModal from "@/components/calendarModal";
@@ -265,22 +265,24 @@ const PostAssignmentScreen = () => {
         />
 
         {/* Update button*/}
-        <Link href="/home/qr-scanner/post-assignment-filled" className="w-full">
-          <TouchableOpacity className="bg-color1 py-3 rounded-full w-full mt-5">
-            <Text className="text-white text-center font-semibold text-sm">
-              Update
-            </Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          className="bg-color1 py-3 rounded-full w-full mt-5"
+          onPress={() => router.push("/home/qr-scanner/post-assignment-filled")}
+        >
+          <Text className="text-white text-center font-semibold text-sm">
+            Update
+          </Text>
+        </TouchableOpacity>
 
         {/* Back button*/}
-        <Link href="/home/qr-scanner/post-assignment" className="w-full">
-          <TouchableOpacity className="bg-color3 py-3 rounded-full w-full mt-3">
-            <Text className="text-color1 text-center font-semibold text-sm">
-              Back to Activities
-            </Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          className="bg-color3 py-3 rounded-full w-full mt-3"
+          onPress={() => router.push("/home/qr-scanner/post-assignment")}
+        >
+          <Text className="text-color1 text-center font-semibold text-sm">
+            Back to Activities
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

@@ -1,30 +1,32 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import React from "react";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 
 const DoneScreen = () => {
   return (
-    <View>
+    <View className="py-5 px-5">
       <Text>All Done</Text>
 
       <View className="flex-row gap-5 mt-5">
         {/* Update button*/}
-        <Link href="/home/qr-scanner/post-assignment-filled" className="w-full">
-          <TouchableOpacity className="bg-color3 py-3 rounded-full w-full">
-            <Text className="text-color1 text-center font-semibold text-sm">
-              Activities
-            </Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          className="bg-color3 py-3 rounded-full flex-1"
+          onPress={() => router.push("/home")}
+        >
+          <Text className="text-color1 text-center font-semibold text-sm">
+            Activities
+          </Text>
+        </TouchableOpacity>
 
-        {/* Back button*/}
-        <Link href="/home" className="w-full">
-          <TouchableOpacity className="bg-color1 py-3 rounded-full w-full">
-            <Text className="text-white text-center font-semibold text-sm">
-              Home
-            </Text>
-          </TouchableOpacity>
-        </Link>
+        {/* Home button*/}
+        <TouchableOpacity
+          className="bg-color1 py-3 rounded-full flex-1"
+          onPress={() => router.push("/home")}
+        >
+          <Text className="text-white text-center font-semibold text-sm">
+            Home
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

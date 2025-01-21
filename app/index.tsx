@@ -1,10 +1,11 @@
 import ButtonComponent from "@/components/button";
-import { Link } from "expo-router";
-import { Image, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Button } from "react-native-paper";
 
 export default function Index() {
   return (
-    <View className="h-screen items-center justify-center">
+    <View className="h-screen items-center justify-center px-8">
       <View className="items-center mb-8">
         <Image
           source={require("@/assets/images/alexium-logo.webp")}
@@ -12,9 +13,19 @@ export default function Index() {
         />
         <Text className="text-xl font-semibold mt-2">Digital Dealer</Text>
         <Text className="text-[8px] text-color2 mt-1">POWERED BY ALEXIUM</Text>
-        <Link href="/login" className="w-full mt-10">
-          <ButtonComponent label="Login" />
-        </Link>
+
+        <ButtonComponent
+          label="Login"
+          var2
+          onPress={() => router.push("/login")}
+          className="px-10 mt-10"
+        />
+        <ButtonComponent
+          label="Home"
+          var2
+          onPress={() => router.push("/home")}
+          className="px-10 mt-10"
+        />
       </View>
     </View>
   );

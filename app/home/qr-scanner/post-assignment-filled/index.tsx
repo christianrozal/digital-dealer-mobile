@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, Image, TextInput } from "react-native";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { ScrollView } from "react-native-gesture-handler";
 
 const PostAssignmentFilledScreen = () => {
@@ -7,7 +7,7 @@ const PostAssignmentFilledScreen = () => {
     <ScrollView>
       <View className="pt-5 px-8">
         <View
-          className="border border-color9 rounded-md w-full py-3 flex-row justify-center mt-10"
+          className="border border-color9 rounded-md w-full py-3 flex-row justify-center"
           style={{ boxShadow: "0px 4px 10px 0px rgba(7, 170, 48, 0.25)" }}
         >
           <Text className="text-xs text-color10">
@@ -77,22 +77,24 @@ const PostAssignmentFilledScreen = () => {
         />
 
         {/* Update button*/}
-        <Link href="/home/qr-scanner/done" className="w-full">
-          <TouchableOpacity className="bg-color1 py-3 rounded-full w-full mt-5">
-            <Text className="text-white text-center font-semibold text-sm">
-              Update
-            </Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          className="bg-color1 py-3 rounded-full w-full mt-5"
+          onPress={() => router.push("/home/qr-scanner/done")}
+        >
+          <Text className="text-white text-center font-semibold text-sm">
+            Update
+          </Text>
+        </TouchableOpacity>
 
         {/* Back button*/}
-        <Link href="/home/qr-scanner/post-assignment" className="w-full">
-          <TouchableOpacity className="bg-color3 py-3 rounded-full w-full mt-3">
-            <Text className="text-color1 text-center font-semibold text-sm">
-              Back to Activities
-            </Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          className="bg-color3 py-3 rounded-full w-full mt-3"
+          onPress={() => router.push("/home/qr-scanner/post-assignment")}
+        >
+          <Text className="text-color1 text-center font-semibold text-sm">
+            Back to Activities
+          </Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
