@@ -1,9 +1,12 @@
+// store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import userReducer from './userSlice';
+import sidePaneReducer from './sidePaneSlice';
 
 const store = configureStore({
   reducer: {
     user: userReducer,
+    sidePane: sidePaneReducer,
   },
 });
 

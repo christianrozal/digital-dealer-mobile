@@ -4,20 +4,23 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   TouchableOpacity,
-  Image,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
   interpolate,
   withSpring,
+  runOnJS,
+  useAnimatedReaction,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import React from "react";
-import BackArrowIcon from "./svg/backArrow";
-import EmailIcon from "./svg/emailIcon";
-import PhoneIcon from "./svg/phoneIcon";
-import ProfileIcon from "./svg/profileIcon";
-import NotificationsIcon from "./svg/notificationsIcon";
+import BackArrowIcon from "../svg/backArrow";
+import QrScreen from "./qr";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/store/store";
+import { resetScreen, setScreen } from "@/store/sidePaneSlice";
+import ProfileScreen from "./profile";
+import EditProfileScreen from "./editProfile";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -26,8 +29,31 @@ const SidePaneComponent = ({
 }: {
   translateX: Animated.SharedValue<number>;
 }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const currentScreen = useSelector(
+    (state: RootState) => state.sidePane.currentScreen
+  );
+
+  // Reset to main screen when pane opens
+  useAnimatedReaction(
+    () => translateX.value,
+    (currentValue, previousValue) => {
+      if (previousValue === -SCREEN_WIDTH * 0.95 && currentValue === 0) {
+        runOnJS(dispatch)(resetScreen());
+      }
+    }
+  );
+
   const handleClose = () => {
     translateX.value = withSpring(-SCREEN_WIDTH * 0.95);
+  };
+
+  const handleBackPress = () => {
+    if (currentScreen === "main") {
+      handleClose();
+    } else {
+      dispatch(setScreen("main"));
+    }
   };
 
   const closeGesture = Gesture.Pan()
@@ -103,7 +129,7 @@ const SidePaneComponent = ({
               }}
             />
             <View className="flex-row items-center" style={{ gap: 16 }}>
-              <TouchableOpacity onPress={handleClose}>
+              <TouchableOpacity onPress={handleBackPress}>
                 <BackArrowIcon />
               </TouchableOpacity>
               <View
@@ -118,55 +144,10 @@ const SidePaneComponent = ({
               </View>
             </View>
 
-            <View
-              className="bg-color3 rounded-md mt-10"
-              style={{ padding: 20 }}
-            >
-              <Image
-                source={require("@/assets/images/sample_qr.png")}
-                style={{ width: 229, height: 208 }}
-                className="mx-auto"
-              />
-            </View>
-
-            <View
-              className="py-3 flex-row bg-color3 items-center gap-3 mt-8 rounded-md"
-              style={{ paddingHorizontal: 24 }}
-            >
-              <EmailIcon stroke="#3D12FA" width={20} height={20} />
-              <Text className="text-xs">abompane@alexium.com.au</Text>
-            </View>
-            <View
-              className="py-3 flex-row bg-color3 items-center gap-3 mt-3 rounded-md"
-              style={{ paddingHorizontal: 24 }}
-            >
-              <PhoneIcon stroke="#3D12FA" width={20} height={20} />
-              <Text className="text-xs">&#40;03&#41; 9847 7927</Text>
-            </View>
-
-            <View
-              className="absolute flex-row justify-between"
-              style={{
-                bottom: 40,
-                paddingHorizontal: 64,
-                width: "100%",
-                marginHorizontal: -32,
-              }}
-            >
-              <TouchableOpacity>
-                <View className="flex-row gap-1 items-center">
-                  <ProfileIcon />
-                  <Text className="text-xs font-medium">Profile</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity>
-                <View className="flex-row gap-1 items-center">
-                  <NotificationsIcon />
-                  <Text className="text-xs font-medium">Notifications</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+            {/* Content Area */}
+            {currentScreen === "main" && <QrScreen />}
+            {currentScreen === "profile" && <ProfileScreen />}
+            {currentScreen === "editProfile" && <EditProfileScreen />}
           </View>
         </Animated.View>
       </GestureDetector>

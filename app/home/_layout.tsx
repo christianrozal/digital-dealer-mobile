@@ -14,7 +14,7 @@ import AnalyticsIcon from "@/components/svg/analyticsIcon";
 import NotificationsIcon from "@/components/svg/notificationsIcon";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
-import SidePaneComponent from "@/components/sidePane";
+import SidePaneComponent from "@/components/sidepane/sidePane";
 import ActivityIcon from "@/components/svg/activityIcon";
 import CustomersIcon from "@/components/svg/customersIcon";
 import ScannerIcon from "@/components/svg/scannerIcon";
