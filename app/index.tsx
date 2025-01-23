@@ -1,7 +1,6 @@
 import ButtonComponent from "@/components/button";
 import { router } from "expo-router";
-import { Image, Text, TouchableOpacity, View } from "react-native";
-import { Button } from "react-native-paper";
+import { Image, Text, View } from "react-native";
 
 export default function Index() {
   return (

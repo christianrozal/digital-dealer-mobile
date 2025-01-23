@@ -1,97 +1,147 @@
-import { View, TouchableOpacity, Image, ScrollView, Text } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  Text,
+  Dimensions,
+} from "react-native";
 import React from "react";
-import { router, Slot } from "expo-router";
+import { router, Slot, usePathname } from "expo-router";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
-import { Avatar } from "react-native-paper";
+import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
+import AnalyticsIcon from "@/components/svg/analyticsIcon";
+import NotificationsIcon from "@/components/svg/notificationsIcon";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
+import SidePaneComponent from "@/components/sidePane";
+import ActivityIcon from "@/components/svg/activityIcon";
+import CustomersIcon from "@/components/svg/customersIcon";
+import ScannerIcon from "@/components/svg/scannerIcon";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const HomeLayout = () => {
-  // Get user data from Redux
   const user = useSelector((state: RootState) => state.user);
+  const pathname = usePathname();
+  const translateX = useSharedValue(-SCREEN_WIDTH * 0.95);
 
-  const getInitials = (name: string | null) => {
-    if (!name) return "XD";
-    return name.slice(0, 1).toUpperCase();
-  };
+  const openGesture = Gesture.Pan()
+    .hitSlop({ left: 0, width: 30 })
+    .onBegin((e) => {
+      if (translateX.value === -SCREEN_WIDTH * 0.95 && e.x < 30) {
+        return;
+      }
+    })
+    .onUpdate((e) => {
+      const newTranslate = -SCREEN_WIDTH * 0.95 + e.translationX;
+      translateX.value = Math.min(
+        0,
+        Math.max(-SCREEN_WIDTH * 0.95, newTranslate)
+      );
+    })
+    .onEnd((e) => {
+      if (e.translationX > SCREEN_WIDTH * 0.3 || e.velocityX > 500) {
+        translateX.value = withSpring(0, { velocity: e.velocityX });
+      } else {
+        translateX.value = withSpring(-SCREEN_WIDTH * 0.95, {
+          velocity: e.velocityX,
+        });
+      }
+    });
 
   return (
-    <ScrollView>
-      {/* Header */}
-      <View className="flex-row justify-between items-center py-5 px-5">
-        {/* User Icon */}
-        {user.isLoggedIn ? (
-          <TouchableOpacity>
-            <Avatar.Text
-              size={30}
-              label={getInitials(user.name)}
-              style={{ backgroundColor: "#3D12FA" }}
-            />
+    <GestureDetector gesture={openGesture}>
+      <View className="flex-1 bg-white">
+        {/* Header */}
+        <View className="flex-row justify-between items-center py-5 px-5 z-20 bg-white">
+          {/* User Icon */}
+          <TouchableOpacity
+            onPress={() => {
+              // Only open if currently closed
+              if (translateX.value === -SCREEN_WIDTH * 0.95) {
+                translateX.value = withSpring(0);
+              }
+            }}
+          >
+            <View className="size-8 bg-color1 rounded-full flex items-center justify-center">
+              <Text className="text-white font-bold text-xs">
+                {user.name
+                  ? user.name[0].toUpperCase() +
+                    (user.name.length > 1 ? user.name[1].toLowerCase() : "")
+                  : "Us"}
+              </Text>
+            </View>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity>
-            <Image
-              source={require("@/assets/images/profile.webp")}
-              style={{ width: 22, height: 22 }}
-            />
-          </TouchableOpacity>
-        )}
+          {/* Logo */}
+          <View>
+            <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
+          </View>
+          {/* Header Icons */}
+          <View className="flex-row gap-2 items-center">
+            <TouchableOpacity onPress={() => router.push("/home/analytics")}>
+              <AnalyticsIcon
+                width={20}
+                height={20}
+                stroke={pathname === "/home/analytics" ? "#3D12FA" : "#9EA5AD"}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/home/notifications")}
+            >
+              <NotificationsIcon
+                width={20}
+                height={20}
+                stroke={
+                  pathname === "/home/notifications" ? "#3D12FA" : "#9EA5AD"
+                }
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-        {/* Logo */}
-        <TouchableOpacity onPress={() => router.push("/home")}>
-          <Image
-            source={require("@/assets/images/alexium-logo-2.webp")}
-            style={{ width: 64 * 1.3, height: 14 * 1.3 }}
-          />
-        </TouchableOpacity>
+        {/* Page Content */}
+        <ScrollView className="flex-1">
+          <Slot />
+        </ScrollView>
 
-        <View className="flex-row gap-2">
-          {/* Analytics */}
-          <TouchableOpacity onPress={() => router.push("/home/analytics")}>
-            <Image
-              source={require("@/assets/images/analytics-icon.webp")}
-              style={{ width: 22, height: 22 }}
+        {/* Side Pane */}
+        <SidePaneComponent translateX={translateX} />
+
+        {/* Bottom Navigation */}
+        <View className="absolute bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-100 flex-row justify-center gap-10 items-center py-3">
+          <TouchableOpacity
+            className="flex items-center"
+            onPress={() => router.push("/home")}
+          >
+            <ActivityIcon
+              stroke={pathname === "/home" ? "#3D12FA" : "#BECAD6"}
+            />
+            <Text className="text-[10px] text-gray-500 font-semibold mt-1">
+              Activity
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push("/home/qr-scanner")}>
+            <ScannerIcon
+              fgColor={pathname === "/home/qr-scanner" ? "#3D12FA" : "#BECAD6"}
             />
           </TouchableOpacity>
-          {/* Notifications */}
-          <TouchableOpacity onPress={() => router.push("/home/notifications")}>
-            <Image
-              source={require("@/assets/images/notification-icon.webp")}
-              style={{ width: 22, height: 22 }}
+
+          <TouchableOpacity
+            className="flex items-center"
+            onPress={() => router.push("/home/customers")}
+          >
+            <CustomersIcon
+              stroke={pathname === "/home/customers" ? "#3D12FA" : "#BECAD6"}
             />
+            <Text className="text-[10px] text-gray-500 font-semibold mt-1">
+              Customers
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
-      <Slot />
-
-      {/* Bottom Navigation Bar */}
-      <View className="fixed bottom-0 w-full flex-row justify-center gap-10 items-center py-2 mt-5 shadow-md">
-        <TouchableOpacity className="flex items-center">
-          <Image
-            source={require("@/assets/images/activity-icon.webp")}
-            style={{ width: 24, height: 24 }}
-          />
-          <Text className="text-[10px] text-gray-500 font-semibold mt-1">
-            Activity
-          </Text>
-        </TouchableOpacity>
-        {/* Qr Screen */}
-        <TouchableOpacity onPress={() => router.push("/home/qr-scanner")}>
-          <Image
-            source={require("@/assets/images/scan-icon.webp")}
-            style={{ width: 51, height: 51 }}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity className="flex items-center">
-          <Image
-            source={require("@/assets/images/customers-icon.webp")}
-            style={{ width: 24, height: 24 }}
-          />
-          <Text className="text-[10px] text-gray-500 font-semibold mt-1">
-            Customers
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+    </GestureDetector>
   );
 };
 

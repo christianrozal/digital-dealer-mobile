@@ -9,14 +9,20 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/alexium-logo.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.alexium.digitaldealer"
+      "package": "com.alexium.digitaldealer",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -31,10 +37,15 @@
           "image": "./assets/images/alexium-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#000000"
         }
       ],
-      "expo-barcode-scanner"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for QR scanning"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,202 +1,166 @@
-import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
-import { useState } from "react";
-import {
-  Button,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-} from "react-native";
-import * as appwrite from "react-native-appwrite";
-import { useDispatch } from "react-redux";
-import { setCustomer } from "@/store/userSlice"; // Adjust the path if needed
+import { useState, useEffect } from "react";
+import { Button, Image, Text, TouchableOpacity, View } from "react-native";
+import { CameraView, Camera } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
+import { useDispatch } from "react-redux";
+import { setCustomer } from "@/store/userSlice";
+import * as appwrite from "react-native-appwrite";
 
-// Initialize Appwrite client (move this outside the component for better performance)
+// Appwrite client setup
 const client = new appwrite.Client();
 client
-  .setEndpoint("https://cloud.appwrite.io/v1") // Replace with your Appwrite endpoint
-  .setProject("6780c774003170c68252"); // Replace with your project ID
+  .setEndpoint("https://cloud.appwrite.io/v1")
+  .setProject("6780c774003170c68252");
 
 const databases = new appwrite.Databases(client);
-const DATABASE_ID = "67871d61002bf7e6bc9e"; // Replace with your database ID
-const CUSTOMERS_COLLECTION_ID = "678724210037c2b3b179"; // Replace with your collection ID
+const DATABASE_ID = "67871d61002bf7e6bc9e";
+const CUSTOMERS_COLLECTION_ID = "678724210037c2b3b179";
 
-export default function QrScanner() {
-  const [facing, setFacing] = useState<CameraType>("back");
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scannedData, setScannedData] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const QrScannerScreen = () => {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
   const dispatch = useDispatch();
 
-  if (!permission) {
-    return <View />;
-  }
+  useEffect(() => {
+    const getCameraPermissions = async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === "granted");
+    };
+    getCameraPermissions();
+  }, []);
 
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>
-          We need your permission to show the camera
-        </Text>
-        <Button onPress={requestPermission} title="Grant Permission" />
-      </View>
-    );
-  }
-
-  function toggleCameraFacing() {
-    setFacing((current) => (current === "back" ? "front" : "back"));
-  }
-
-  const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    if (!scannedData) {
-      setScannedData(data);
-      console.log("Scanned QR Code (Customer ID):", data);
-      fetchCustomerData(data);
-    }
-  };
-
-  const fetchCustomerData = async (customerId: string) => {
-    setIsLoading(true);
-    setError(null);
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    setScanned(true);
     try {
       const response = await databases.getDocument(
         DATABASE_ID,
         CUSTOMERS_COLLECTION_ID,
-        customerId
+        data
       );
-      console.log("Customer Data:", response);
-      dispatch(setCustomer(response)); // Dispatch the action to update Redux store
-      router.push("/home/qr-scanner/customer-assignment"); // Navigate after successful fetch
-    } catch (err: any) {
+      dispatch(setCustomer(response));
+      router.push("/home/qr-scanner/customer-assignment");
+    } catch (err) {
       console.error("Error fetching customer data:", err);
-      setError("Failed to fetch customer data.");
+      alert("Invalid QR code or customer not found");
     } finally {
-      setIsLoading(false);
+      setScanned(false);
     }
   };
 
-  const resetScanner = () => {
-    setScannedData(null);
-    setError(null);
+  const handleImageUpload = async () => {
+    // Request media library permissions
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      alert("Permission to access photos is required!");
+      return;
+    }
+
+    // Launch image picker
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      try {
+        const uri = result.assets[0].uri;
+        // Use expo-camera's scanFromURLAsync instead of expo-barcode-scanner
+        const barcodes = await Camera.scanFromURLAsync(uri, ["qr", "pdf417"]);
+
+        if (barcodes.length > 0) {
+          handleBarcodeScanned({ data: barcodes[0].data });
+        } else {
+          alert("No QR code found in the selected image.");
+          setScanned(false);
+        }
+      } catch (error) {
+        console.error("Error scanning image:", error);
+        alert("Error scanning QR code from image");
+        setScanned(false);
+      }
+    }
   };
 
+  if (hasPermission === null) {
+    return (
+      <View>
+        <Text>Requesting camera permission...</Text>
+      </View>
+    );
+  }
+
+  if (hasPermission === false) {
+    return (
+      <View>
+        <Text>Camera access is required</Text>
+        <Button
+          title="Grant Permission"
+          onPress={async () => {
+            const { status } = await Camera.requestCameraPermissionsAsync();
+            setHasPermission(status === "granted");
+          }}
+        />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <View className="bg-color1 h-screen relative">
       <CameraView
-        style={styles.camera}
-        facing={facing}
+        facing="back"
+        onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
         barcodeScannerSettings={{
-          barcodeTypes: ["qr"],
+          barcodeTypes: ["qr", "pdf417"],
         }}
-        onBarcodeScanned={scannedData ? undefined : handleBarCodeScanned}
+        className="flex-1"
+        style={{ height: "100%" }}
       >
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-            <Text style={styles.text}>Flip Camera</Text>
-          </TouchableOpacity>
+        {/* Blur overlay with hole */}
+        <View className="absolute top-0 left-0 right-0 bottom-0">
+          {/* Top blur */}
+          <View
+            className="h-20 bg-black opacity-50" // Matches your mt-20
+          />
+
+          {/* Middle section */}
+          <View className="flex-row h-64">
+            {" "}
+            {/* Matches your scanning area height */}
+            {/* Left blur */}
+            <View className="flex-1 bg-black opacity-50" />
+            {/* Clear area (matches your w-64) */}
+            <View className="w-64" />
+            {/* Right blur */}
+            <View className="flex-1 bg-black opacity-50" />
+          </View>
+
+          {/* Bottom blur */}
+          <View className="flex-1 bg-black opacity-50" />
         </View>
+
+        {/* Your original border elements */}
+        <View className="mt-20">
+          <View className="h-64 w-64 relative mx-auto">
+            <View className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-color1" />
+            <View className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-color1" />
+            <View className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-color1" />
+            <View className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-color1" />
+          </View>
+        </View>
+
+        {/* Your original upload button */}
+        <TouchableOpacity onPress={handleImageUpload}>
+          <Image
+            source={require("@/assets/images/upload.svg")}
+            style={{ width: 51, height: 51 }}
+            className="mt-16 mx-auto"
+          />
+        </TouchableOpacity>
       </CameraView>
-
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007BFF" />
-          <Text style={styles.loadingText}>Fetching Customer Data...</Text>
-        </View>
-      )}
-
-      {error && (
-        <View style={styles.infoContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Button title="Scan Again" onPress={resetScanner} />
-        </View>
-      )}
-
-      {scannedData && !isLoading && !error && (
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoText}>
-            Scanned Customer ID: {scannedData}
-          </Text>
-          <Text style={styles.infoText}>Fetching customer details...</Text>
-          <Button title="Scan Again" onPress={resetScanner} />
-        </View>
-      )}
     </View>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  message: {
-    textAlign: "center",
-    paddingBottom: 10,
-  },
-  camera: {
-    flex: 1,
-  },
-  buttonContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "transparent",
-    margin: 64,
-  },
-  button: {
-    flex: 1,
-    alignSelf: "flex-end",
-    alignItems: "center",
-  },
-  text: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  loadingText: {
-    marginTop: 10,
-    color: "white",
-    fontSize: 16,
-  },
-  infoContainer: {
-    position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
-    padding: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  infoText: {
-    fontSize: 16,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  errorText: {
-    fontSize: 16,
-    marginBottom: 8,
-    color: "red",
-    textAlign: "center",
-  },
-});
+export default QrScannerScreen;
