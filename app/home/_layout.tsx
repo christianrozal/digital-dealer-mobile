@@ -52,7 +52,7 @@ const HomeLayout = () => {
 
   return (
     <GestureDetector gesture={openGesture}>
-      <View className="flex-1 bg-white">
+      <View className="flex-1 bg-white pb-20">
         {/* Header */}
         <View className="flex-row justify-between items-center py-5 px-5 z-20 bg-white">
           {/* User Icon */}

@@ -45,6 +45,14 @@
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for QR scanning"
         }
+      ],
+      [
+        "@shopify/react-native-skia",
+        {
+          "ios": {
+            "staticFrameworks": ["UIKit"]
+          }
+        }
       ]
     ],
     "experiments": {
