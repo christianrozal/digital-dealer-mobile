@@ -15,6 +15,7 @@ module.exports = {
         color8: "#BECAD6",
         color9: "#84C953",
         color10: "#018221",
+        color11: "#9BACC0",
 
       }
     },

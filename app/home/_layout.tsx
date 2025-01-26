@@ -13,7 +13,7 @@ import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import AnalyticsIcon from "@/components/svg/analyticsIcon";
 import NotificationsIcon from "@/components/svg/notificationsIcon";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
+import { useSharedValue, withSpring } from "react-native-reanimated";
 import SidePaneComponent from "@/components/sidepane/sidePane";
 import ActivityIcon from "@/components/svg/activityIcon";
 import CustomersIcon from "@/components/svg/customersIcon";

@@ -1,12 +1,12 @@
 import { View, Text } from "react-native";
 import React from "react";
 
-const ActivityScreen = () => {
+const ActivitiesFilter = () => {
   return (
     <View>
-      <Text>ActivityScreen</Text>
+      <Text>ActivitiesFilter</Text>
     </View>
   );
 };
 
-export default ActivityScreen;
+export default ActivitiesFilter;

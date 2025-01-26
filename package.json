@@ -20,7 +20,7 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@reduxjs/toolkit": "^2.5.0",
-    "@shopify/react-native-skia": "1.5.0",
+    "@shopify/react-native-skia": "^1.5.0",
     "dayjs": "^1.11.13",
     "expo": "~52.0.25",
     "expo-barcode-scanner": "^13.0.1",
