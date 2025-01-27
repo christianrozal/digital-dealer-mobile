@@ -46,6 +46,17 @@ const HomeScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
+  // Helper function to check if date is today
+  const isToday = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
   const handleLogout = async () => {
     try {
       await account.deleteSession("current");
@@ -133,6 +144,10 @@ const HomeScreen = () => {
 
   const filteredScans = consultantData?.scans
     ?.filter((scan) => {
+      // First filter out scans not from today
+      if (!isToday(scan.$createdAt)) return false;
+
+      // Then apply other filters
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const searchFields = [
@@ -242,7 +257,7 @@ const HomeScreen = () => {
 
       <View className="mt-3">
         <Text className="text-xs text-gray-500">
-          Below shows the list of scans done.
+          Below shows the list of scans done today.
         </Text>
       </View>
 
@@ -271,7 +286,7 @@ const HomeScreen = () => {
       {/* Scans List */}
       {filteredScans?.length === 0 ? (
         <View className="mt-5 items-center">
-          <Text className="text-gray-500">No matching scans found</Text>
+          <Text className="text-gray-500">No scans found for today</Text>
         </View>
       ) : (
         filteredScans?.map((scan, index) => (

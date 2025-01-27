@@ -1,5 +1,5 @@
 // components/ActivitiesFilter.tsx
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Modal } from "react-native";
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
@@ -16,13 +16,18 @@ import {
 import CloseIcon from "./svg/closeIcon";
 import ButtonComponent from "./button";
 import ChevronDownIcon from "./svg/chevronDown";
-import ChevronUpIcon from "./svg/chevronUp";
+import CalendarIcon from "./svg/calendar";
+import CalendarFilter from "./calendarFilter";
 
 const ActivitiesFilter = () => {
   const dispatch = useDispatch();
   const { selectedInterestedIns, selectedInterestStatuses, sortBy } =
     useSelector((state: RootState) => state.ui);
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
+  const [fromDate, setFromDate] = useState<dayjs.Dayjs | null>(null);
+  const [toDate, setToDate] = useState<dayjs.Dayjs | null>(null);
 
   const INTEREST_OPTIONS = [
     { value: "Buying", label: "Buying" },
@@ -116,6 +121,75 @@ const ActivitiesFilter = () => {
 
   return (
     <View className="flex-1 bg-white">
+      {/* Calendar Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showCalendar}
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <View className="flex-1 justify-end bg-transparent">
+          <View
+            className="h-2/3 bg-white rounded-t-3xl"
+            style={{ padding: 40 }}
+          >
+            <CalendarFilter
+              onClose={(date) => {
+                if (date) {
+                  if (selectingFor === "from") {
+                    setFromDate(date);
+                  } else {
+                    setToDate(date);
+                  }
+                }
+                setShowCalendar(false);
+              }}
+              initialDate={selectingFor === "from" ? fromDate : toDate}
+            />
+          </View>
+        </View>
+      </Modal>
+      {/* Creaton On Filter */}
+      <View>
+        <View className="flex-row gap-2 justify-between">
+          <Text className="text-sm font-semibold">Created On</Text>
+          <Text className="text-color1 font-semibold text-sm">Reset</Text>
+        </View>
+        <View className="flex-row gap-5 mt-4">
+          <View className="flex-1">
+            <Text className="text-xs text-gray-600 font-medium">From</Text>
+            <TouchableOpacity
+              className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
+              style={{ backgroundColor: "#FAFAFA" }}
+              onPress={() => {
+                setSelectingFor("from");
+                setShowCalendar(true);
+              }}
+            >
+              <Text className="text-gray-700 font-semibold text-xs">
+                {fromDate ? fromDate.format("DD-MM-YYYY") : "Select date"}
+              </Text>
+              <CalendarIcon width={20} height={20} />
+            </TouchableOpacity>
+          </View>
+          <View className="flex-1">
+            <Text className="text-xs text-gray-600 font-medium">To</Text>
+            <TouchableOpacity
+              className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
+              style={{ backgroundColor: "#FAFAFA" }}
+              onPress={() => {
+                setSelectingFor("to");
+                setShowCalendar(true);
+              }}
+            >
+              <Text className="text-gray-700 font-semibold text-xs">
+                {toDate ? toDate.format("DD-MM-YYYY") : "Select date"}
+              </Text>
+              <CalendarIcon width={20} height={20} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
       {/* Sort By Filter */}
       <View className="mt-4 relative z-10">
         {" "}
