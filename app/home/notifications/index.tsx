@@ -3,7 +3,7 @@ import React from "react";
 
 const NotificationsScreen = () => {
   return (
-    <View className="px-5">
+    <View className="px-5 pt-20">
       <View className="flex-row justify-between items-center mt-5">
         <Text className="text-2xl font-semibold">Notifications</Text>
         <TouchableOpacity>

@@ -6,9 +6,9 @@ import PhoneIcon from "@/components/svg/phoneIcon";
 
 const CustomersScreen = () => {
   return (
-    <View className="px-5">
+    <View className="px-5 pt-20">
       <View className="flex-row justify-between items-center mt-5">
-        <Text className="text-2xl font-semibold">Customers</Text>
+        <Text className="text-2xl font-semibold">My Customers</Text>
         <View className="flex-row gap-1 items-center">
           <TouchableOpacity>
             <SearchIcon width={28} height={28} stroke="#9EA5AD" />

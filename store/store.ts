@@ -3,12 +3,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import userReducer from './userSlice';
 import sidePaneReducer from './sidePaneSlice';
 import consultantReducer from './consultantSlice';
+import uiReducer from './uiSlice';
 
 const store = configureStore({
   reducer: {
     user: userReducer,
     sidePane: sidePaneReducer,
     consultant: consultantReducer,
+    ui: uiReducer,
   },
 });
 

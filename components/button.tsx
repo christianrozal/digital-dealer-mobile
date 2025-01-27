@@ -19,7 +19,7 @@ const ButtonComponent: FC<ButtonComponentProps> = ({
       onPress={onPress}
       className={`${className} ${
         var2 ? "bg-color3" : "bg-color1 "
-      } py-3 rounded-full w-full`}
+      } py-3 rounded-full flex-1`}
     >
       <Text
         className={`${
