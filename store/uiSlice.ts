@@ -1,11 +1,14 @@
 // store/uiSlice.ts
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import dayjs from "dayjs";
 
 interface UIState {
   isActivitiesFilterVisible: boolean;
   selectedInterestedIns: string[];
   selectedInterestStatuses: string[];
-  sortBy: 'follow_up_date' | 'last_scanned' | null;
+  sortBy: "follow_up_date" | "last_scanned" | null;
+  fromDate: dayjs.Dayjs | null; // Added for date range
+  toDate: dayjs.Dayjs | null; // Added for date range
 }
 
 const initialState: UIState = {
@@ -13,6 +16,8 @@ const initialState: UIState = {
   selectedInterestedIns: [],
   selectedInterestStatuses: [],
   sortBy: null,
+  fromDate: null, // Initial state for fromDate
+  toDate: null, // Initial state for toDate
 };
 
 const uiSlice = createSlice({
@@ -51,12 +56,25 @@ const uiSlice = createSlice({
       state.selectedInterestedIns = [];
       state.selectedInterestStatuses = [];
       state.sortBy = null;
+      state.fromDate = null; // Reset fromDate
+      state.toDate = null; // Reset toDate
     },
-    setSortBy: (state, action: PayloadAction<UIState['sortBy']>) => {
+    setSortBy: (state, action: PayloadAction<UIState["sortBy"]>) => {
       state.sortBy = action.payload;
     },
     resetSortBy: (state) => {
       state.sortBy = null;
+    },
+    // New reducers for date range
+    setFromDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+      state.fromDate = action.payload;
+    },
+    setToDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+      state.toDate = action.payload;
+    },
+    resetDateRange: (state) => {
+      state.fromDate = null;
+      state.toDate = null;
     },
   },
 });
@@ -71,6 +89,9 @@ export const {
   resetAllFilters,
   setSortBy,
   resetSortBy,
+  setFromDate, // Export new actions
+  setToDate, // Export new actions
+  resetDateRange, // Export new action
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

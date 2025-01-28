@@ -1,4 +1,3 @@
-// components/ActivitiesFilter.tsx
 import { View, Text, TouchableOpacity, Modal } from "react-native";
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,12 +11,16 @@ import {
   resetAllFilters,
   setSortBy,
   resetSortBy,
+  setFromDate,
+  setToDate,
+  resetDateRange,
 } from "@/store/uiSlice";
 import CloseIcon from "./svg/closeIcon";
 import ButtonComponent from "./button";
 import ChevronDownIcon from "./svg/chevronDown";
 import CalendarIcon from "./svg/calendar";
 import CalendarFilter from "./calendarFilter";
+import dayjs from "dayjs";
 
 const ActivitiesFilter = () => {
   const dispatch = useDispatch();
@@ -26,8 +29,15 @@ const ActivitiesFilter = () => {
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
-  const [fromDate, setFromDate] = useState<dayjs.Dayjs | null>(null);
-  const [toDate, setToDate] = useState<dayjs.Dayjs | null>(null);
+  const { fromDate, toDate } = useSelector((state: RootState) => state.ui);
+
+  // Console logs to check Redux state values
+  console.log("ActivitiesFilter - useSelector values:");
+  console.log("selectedInterestedIns:", selectedInterestedIns);
+  console.log("selectedInterestStatuses:", selectedInterestStatuses);
+  console.log("sortBy:", sortBy);
+  console.log("fromDate:", fromDate ? fromDate.format("YYYY-MM-DD") : fromDate); // Format dayjs for easier reading
+  console.log("toDate:", toDate ? toDate.format("YYYY-MM-DD") : toDate);       // Format dayjs for easier reading
 
   const INTEREST_OPTIONS = [
     { value: "Buying", label: "Buying" },
@@ -48,7 +58,6 @@ const ActivitiesFilter = () => {
     { value: "last_scanned", label: "Last Scanned" },
   ];
 
-  // Style functions remain the same as before
   const getInterestOptionStyle = (value: string) => {
     const isSelected = selectedInterestedIns.includes(value);
     switch (value) {
@@ -129,31 +138,39 @@ const ActivitiesFilter = () => {
         onRequestClose={() => setShowCalendar(false)}
       >
         <View className="flex-1 justify-end bg-transparent">
-          <View
-            className="h-2/3 bg-white rounded-t-3xl"
-            style={{ padding: 40 }}
-          >
+          <View className="h-2/3 bg-white rounded-t-3xl" style={{ padding: 40 }}>
             <CalendarFilter
-              onClose={(date) => {
-                if (date) {
-                  if (selectingFor === "from") {
-                    setFromDate(date);
-                  } else {
-                    setToDate(date);
-                  }
+             onClose={(date) => {
+              if (date) {
+                if (selectingFor === "from") {
+                  dispatch(setFromDate(date)); // Dispatch Redux action
+                } else {
+                  dispatch(setToDate(date)); // Dispatch Redux action
                 }
-                setShowCalendar(false);
-              }}
+              }
+              setShowCalendar(false);
+            }}
               initialDate={selectingFor === "from" ? fromDate : toDate}
+              fromDate={fromDate} // Pass fromDate
+              toDate={toDate}     // Pass toDate
+              selectingFor={selectingFor} // Pass selectingFor
             />
           </View>
         </View>
       </Modal>
-      {/* Creaton On Filter */}
+
+      {/* Created On Filter */}
       <View>
         <View className="flex-row gap-2 justify-between">
           <Text className="text-sm font-semibold">Created On</Text>
-          <Text className="text-color1 font-semibold text-sm">Reset</Text>
+          <Text
+            className="text-color1 font-semibold text-sm"
+            onPress={() => {
+              dispatch(resetDateRange()); // Dispatch Redux action
+            }}
+          >
+            Reset
+          </Text>
         </View>
         <View className="flex-row gap-5 mt-4">
           <View className="flex-1">
@@ -190,6 +207,7 @@ const ActivitiesFilter = () => {
           </View>
         </View>
       </View>
+
       {/* Sort By Filter */}
       <View className="mt-4 relative z-10">
         {" "}
@@ -335,7 +353,7 @@ const ActivitiesFilter = () => {
         </View>
       </View>
 
-      {/* Action Buttons */}
+   {/* Action Buttons */}
       <View className="flex-row mt-5 gap-3 w-full">
         <ButtonComponent
           label="Reset All"

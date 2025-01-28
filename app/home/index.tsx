@@ -21,6 +21,8 @@ import { setConsultant, setError, setLoading } from "@/store/consultantSlice";
 import ActivitiesFilter from "@/components/activitiesFilter";
 import { RootState } from "@/store/store";
 import { hideActivitiesFilter, showActivitiesFilter } from "@/store/uiSlice";
+import dayjs from "dayjs";
+
 
 const client = new Client()
   .setEndpoint("https://cloud.appwrite.io/v1")
@@ -37,6 +39,8 @@ const HomeScreen = () => {
     selectedInterestedIns,
     selectedInterestStatuses,
     sortBy,
+    fromDate, // Get fromDate from Redux state
+    toDate,   // Get toDate from Redux state
   } = useSelector((state: RootState) => state.ui);
   const {
     data: consultantData,
@@ -143,57 +147,65 @@ const HomeScreen = () => {
   };
 
   const filteredScans = consultantData?.scans
-    ?.filter((scan) => {
-      // First filter out scans not from today
+  ?.filter((scan) => {
+    const scanDate = dayjs(scan.$createdAt);
+    const hasDateFilter = fromDate?.isValid() || toDate?.isValid();
+
+    // Date range filtering
+    if (hasDateFilter) {
+      if (fromDate?.isValid() && scanDate.isBefore(fromDate, 'day')) return false;
+      if (toDate?.isValid() && scanDate.isAfter(toDate, 'day')) return false;
+    } else {
+      // Default to today's scans if no date filter is applied
       if (!isToday(scan.$createdAt)) return false;
+    }
 
-      // Then apply other filters
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const searchFields = [
-          scan.customers?.name?.toLowerCase(),
-          scan.customers?.phone?.toLowerCase(),
-          scan.customers?.email?.toLowerCase(),
-          scan.interest_status?.toLowerCase(),
-          scan.interested_in?.toLowerCase(),
-        ];
-        if (!searchFields.some((field) => field?.includes(query))) {
-          return false;
-        }
-      }
-
-      if (
-        selectedInterestedIns.length > 0 &&
-        !selectedInterestedIns.includes(scan.interested_in)
-      ) {
+    // Rest of the filter conditions...
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const searchFields = [
+        scan.customers?.name?.toLowerCase(),
+        scan.customers?.phone?.toLowerCase(),
+        scan.customers?.email?.toLowerCase(),
+        scan.interest_status?.toLowerCase(),
+        scan.interested_in?.toLowerCase(),
+      ];
+      if (!searchFields.some((field) => field?.includes(query))) {
         return false;
       }
+    }
 
-      if (
-        selectedInterestStatuses.length > 0 &&
-        !selectedInterestStatuses.includes(scan.interest_status)
-      ) {
-        return false;
-      }
+    if (
+      selectedInterestedIns.length > 0 &&
+      !selectedInterestedIns.includes(scan.interested_in)
+    ) {
+      return false;
+    }
 
-      return true;
-    })
-    ?.sort((a, b) => {
-      if (!sortBy) return 0;
+    if (
+      selectedInterestStatuses.length > 0 &&
+      !selectedInterestStatuses.includes(scan.interest_status)
+    ) {
+      return false;
+    }
 
-      const dateA =
-        sortBy === "follow_up_date"
-          ? new Date(a.follow_up_date).getTime()
-          : new Date(a.$createdAt).getTime();
+    return true;
+  })
+  ?.sort((a, b) => {
+    if (!sortBy) return 0;
 
-      const dateB =
-        sortBy === "follow_up_date"
-          ? new Date(b.follow_up_date).getTime()
-          : new Date(b.$createdAt).getTime();
+    const dateA =
+      sortBy === "follow_up_date"
+        ? new Date(a.follow_up_date).getTime()
+        : new Date(a.$createdAt).getTime();
 
-      return dateB - dateA; // Descending order (newest first)
-    });
+    const dateB =
+      sortBy === "follow_up_date"
+        ? new Date(b.follow_up_date).getTime()
+        : new Date(b.$createdAt).getTime();
 
+    return dateB - dateA;
+  });
   const hasActiveFilters =
     selectedInterestedIns.length > 0 ||
     selectedInterestStatuses.length > 0 ||
@@ -263,18 +275,23 @@ const HomeScreen = () => {
 
       {/* Today's Summary */}
       <View className="flex-row justify-between rounded-md bg-color3 p-3 mt-5">
-        <Text className="text-xs font-bold">
-          Today{" "}
-          <Text className="text-[10px] font-normal">
-            (
-            {new Date().toLocaleDateString("en-US", {
+      <Text className="text-xs font-bold">
+        {fromDate && fromDate.isValid() || toDate && toDate.isValid() ? "Date Range" : "Today"}{" "}
+        <Text className="text-[10px] font-normal">
+          {fromDate && fromDate.isValid() || toDate && toDate.isValid() ? (
+            <>
+              ({fromDate && fromDate.isValid() ? fromDate.format("DD MMM") : ""}
+              {toDate && toDate.isValid() ? ` - ${toDate.format("DD MMM YYYY")}` : ""})
+            </>
+          ) : (
+            `(${new Date().toLocaleDateString("en-US", {
               day: "numeric",
               month: "short",
               year: "numeric",
-            })}
-            )
-          </Text>
+            })})`
+          )}
         </Text>
+      </Text>
         <Text className="text-[10px]">
           #scans:{" "}
           <Text className="text-xs font-bold">
