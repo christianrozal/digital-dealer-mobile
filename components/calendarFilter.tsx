@@ -117,10 +117,10 @@ if (selectingFor === 'from' && toDate) {
             if (isSelected) {
               bgStyles = { backgroundColor: "rgba(61, 18, 250, 1)" };
             } else if (selectingFor === 'to' && isFromDate) {
-              bgStyles = { backgroundColor: "rgba(61, 18, 250, 0.5)"};
+              bgStyles = { backgroundColor: "#C6D2FF"};
               textStyle = { color: 'white' }; // White text for fromDate when selecting toDate
             } else if (selectingFor === 'from' && isToDate) {
-              bgStyles = { backgroundColor: "rgba(61, 18, 250, 0.5)"};
+              bgStyles = { backgroundColor: "#C6D2FF"};
               textStyle = { color: 'white' }; // White text for toDate when selecting fromDate
             }
 

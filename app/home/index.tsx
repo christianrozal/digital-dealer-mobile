@@ -147,7 +147,7 @@ const HomeScreen = () => {
   };
 
   const filteredScans = consultantData?.scans
-  ?.filter((scan) => {
+    ?.filter((scan) => {
     const scanDate = dayjs(scan.$createdAt);
     const hasDateFilter = fromDate?.isValid() || toDate?.isValid();
 
@@ -190,26 +190,40 @@ const HomeScreen = () => {
     }
 
     return true;
-  })
-  ?.sort((a, b) => {
-    if (!sortBy) return 0;
+    })
 
-    const dateA =
-      sortBy === "follow_up_date"
-        ? new Date(a.follow_up_date).getTime()
-        : new Date(a.$createdAt).getTime();
+    // Sorting the filtered scans
+    .sort((a, b) => {
+      if (!sortBy) return 0;
 
-    const dateB =
-      sortBy === "follow_up_date"
-        ? new Date(b.follow_up_date).getTime()
-        : new Date(b.$createdAt).getTime();
+        // Helper function to handle null or undefined values for sorting dates
+        const safeDate = (date: string | null | undefined): number => {
+            return date ? new Date(date).getTime() : 0;
+        };
+      
+        switch (sortBy) {
+          case "a_to_z":
+            return (a.customers?.name || '').localeCompare(b.customers?.name || '');
+          case "z_to_a":
+            return (b.customers?.name || '').localeCompare(a.customers?.name || '');
+          case "scans_low_to_high":
+            return a.scan_count - b.scan_count;
+          case "scans_high_to_low":
+            return b.scan_count - a.scan_count;
+          case "last_scanned_newest_to_oldest":
+            return safeDate(b.$createdAt) - safeDate(a.$createdAt);
+          case "last_scanned_oldest_to_newest":
+            return safeDate(a.$createdAt) - safeDate(b.$createdAt);
+          default:
+            return 0;
+        }
 
-    return dateB - dateA;
-  });
+    });
+
   const hasActiveFilters =
     selectedInterestedIns.length > 0 ||
     selectedInterestStatuses.length > 0 ||
-    !!sortBy;
+    !!sortBy || fromDate?.isValid() || toDate?.isValid();
 
   if (status === "loading") {
     return (

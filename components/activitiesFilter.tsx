@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, Modal } from "react-native";
-import React, { useState } from "react";
+import { View, Text, TouchableOpacity, Modal, ScrollView } from "react-native";
+import React, { useState, useMemo } from "react"; // Import useMemo
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import {
@@ -18,18 +18,36 @@ import {
 import CloseIcon from "./svg/closeIcon";
 import ButtonComponent from "./button";
 import ChevronDownIcon from "./svg/chevronDown";
-import CalendarIcon from "./svg/calendar";
 import CalendarFilter from "./calendarFilter";
-import dayjs from "dayjs";
+import Calendar2Icon from "./svg/calendar2";
 
 const ActivitiesFilter = () => {
   const dispatch = useDispatch();
-  const { selectedInterestedIns, selectedInterestStatuses, sortBy } =
+  const { selectedInterestedIns, selectedInterestStatuses, sortBy, fromDate, toDate } =
     useSelector((state: RootState) => state.ui);
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
-  const { fromDate, toDate } = useSelector((state: RootState) => state.ui);
+
+
+  // Calculate the filter count using useMemo for optimization
+  const filterCount = useMemo(() => {
+    let count = 0;
+    if (selectedInterestedIns.length > 0) {
+      count++;
+    }
+    if (selectedInterestStatuses.length > 0) {
+      count++;
+    }
+    if (sortBy) {
+      count++;
+    }
+    if (fromDate || toDate) { // Check if either fromDate or toDate is selected
+      count++;
+    }
+    return count;
+  }, [selectedInterestedIns, selectedInterestStatuses, sortBy, fromDate, toDate]);
+
 
   // Console logs to check Redux state values
   console.log("ActivitiesFilter - useSelector values:");
@@ -54,8 +72,12 @@ const ActivitiesFilter = () => {
   ];
 
   const SORT_OPTIONS = [
-    { value: "follow_up_date", label: "Follow Up Date" },
-    { value: "last_scanned", label: "Last Scanned" },
+    { value: "a_to_z", label: "A to Z" },
+    { value: "z_to_a", label: "Z to A" },
+    { value: "scans_low_to_high", label: "Number of scans (lowest to highest)" },
+    { value: "scans_high_to_low", label: "Number of scans (highest to lowest)" },
+    { value: "last_scanned_newest_to_oldest", label: "Last scanned date (newest to oldest)" },
+    { value: "last_scanned_oldest_to_newest", label: "Last scanned date (oldest to newest)" },
   ];
 
   const getInterestOptionStyle = (value: string) => {
@@ -163,14 +185,14 @@ const ActivitiesFilter = () => {
       <View>
         <View className="flex-row gap-2 justify-between">
           <Text className="text-sm font-semibold">Created On</Text>
-          <Text
+          <TouchableOpacity
             className="text-color1 font-semibold text-sm"
             onPress={() => {
               dispatch(resetDateRange()); // Dispatch Redux action
             }}
           >
             Reset
-          </Text>
+          </TouchableOpacity>
         </View>
         <View className="flex-row gap-5 mt-4">
           <View className="flex-1">
@@ -186,7 +208,7 @@ const ActivitiesFilter = () => {
               <Text className="text-gray-700 font-semibold text-xs">
                 {fromDate ? fromDate.format("DD-MM-YYYY") : "Select date"}
               </Text>
-              <CalendarIcon width={20} height={20} />
+              <Calendar2Icon width={20} height={20} />
             </TouchableOpacity>
           </View>
           <View className="flex-1">
@@ -202,7 +224,7 @@ const ActivitiesFilter = () => {
               <Text className="text-gray-700 font-semibold text-xs">
                 {toDate ? toDate.format("DD-MM-YYYY") : "Select date"}
               </Text>
-              <CalendarIcon width={20} height={20} />
+              <Calendar2Icon width={20} height={20} />
             </TouchableOpacity>
           </View>
         </View>
@@ -236,7 +258,7 @@ const ActivitiesFilter = () => {
           </View>
         </TouchableOpacity>
         {isSortDropdownOpen && (
-          <View
+          <ScrollView
             className="mt-1 bg-white border border-gray-200  rounded-md"
             style={{
               position: "absolute",
@@ -244,6 +266,7 @@ const ActivitiesFilter = () => {
               left: 0,
               right: 0,
               zIndex: 10,
+              height: 112,
             }}
           >
             {SORT_OPTIONS.map((option) => (
@@ -277,7 +300,7 @@ const ActivitiesFilter = () => {
                 )}
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         )}
       </View>
 
@@ -362,11 +385,7 @@ const ActivitiesFilter = () => {
           onPress={() => dispatch(resetAllFilters())}
         />
         <ButtonComponent
-          label={`Apply Filters (${
-            Number(selectedInterestedIns.length > 0) +
-            Number(selectedInterestStatuses.length > 0) +
-            Number(!!sortBy)
-          })`}
+          label={`Apply Filters (${filterCount})`} // Use the calculated filterCount here
           className="flex-1"
           onPress={() => dispatch(hideActivitiesFilter())}
         />
