@@ -6,7 +6,7 @@ import PhoneIcon from "@/components/svg/phoneIcon";
 import SearchIcon from "@/components/svg/searchIcon";
 import CloseIcon from "@/components/svg/closeIcon";
 import { router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -14,14 +14,19 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  ScrollView,
 } from "react-native";
 import { Client, Account, Databases, Query } from "react-native-appwrite";
 import { useDispatch, useSelector } from "react-redux";
 import { setConsultant, setError, setLoading } from "@/store/consultantSlice";
 import ActivitiesFilter from "@/components/activitiesFilter";
 import { RootState } from "@/store/store";
-import { hideActivitiesFilter, showActivitiesFilter } from "@/store/uiSlice";
+import {
+  hideActivitiesFilter,
+  showActivitiesFilter,
+} from "@/store/uiSlice";
 import dayjs from "dayjs";
+import { useFocusEffect } from "@react-navigation/native";
 
 
 const client = new Client()
@@ -32,15 +37,24 @@ const account = new Account(client);
 const databases = new Databases(client);
 
 const HomeScreen = () => {
+  const scrollViewRef = useRef<ScrollView>(null);
+  
+  
+      useFocusEffect(
+          useCallback(() => {
+            // Reset scroll position when the screen comes into focus
+            scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+          }, [])
+        );
   const inputRef = useRef<TextInput>(null);
   const dispatch = useDispatch();
   const {
     isActivitiesFilterVisible,
-    selectedInterestedIns,
-    selectedInterestStatuses,
-    sortBy,
-    fromDate, // Get fromDate from Redux state
-    toDate,   // Get toDate from Redux state
+    activitiesSelectedInterestedIns,
+    activitiesSelectedInterestStatuses,
+    activitiesSortBy,
+    activitiesFromDate,
+    activitiesToDate,
   } = useSelector((state: RootState) => state.ui);
   const {
     data: consultantData,
@@ -61,14 +75,13 @@ const HomeScreen = () => {
     );
   };
 
-  const handleLogout = async () => {
-    try {
-      await account.deleteSession("current");
-      router.replace("/login");
-    } catch (error) {
-      console.log("Logout Error:", error);
+
+
+  useEffect(() => {
+    if (consultantData) {
+      console.log("Consultant Data:", JSON.stringify(consultantData, null, 2));
     }
-  };
+  }, [consultantData]);
 
   useEffect(() => {
     if (isSearching) {
@@ -148,13 +161,13 @@ const HomeScreen = () => {
 
   const filteredScans = consultantData?.scans
     ?.filter((scan) => {
-    const scanDate = dayjs(scan.$createdAt);
-    const hasDateFilter = fromDate?.isValid() || toDate?.isValid();
+      const scanDate = dayjs(scan.$createdAt);
+      const hasDateFilter = activitiesFromDate?.isValid() || activitiesToDate?.isValid();
 
     // Date range filtering
     if (hasDateFilter) {
-      if (fromDate?.isValid() && scanDate.isBefore(fromDate, 'day')) return false;
-      if (toDate?.isValid() && scanDate.isAfter(toDate, 'day')) return false;
+      if (activitiesFromDate?.isValid() && scanDate.isBefore(activitiesFromDate, 'day')) return false;
+      if (activitiesToDate?.isValid() && scanDate.isAfter(activitiesToDate, 'day')) return false;
     } else {
       // Default to today's scans if no date filter is applied
       if (!isToday(scan.$createdAt)) return false;
@@ -174,56 +187,54 @@ const HomeScreen = () => {
         return false;
       }
     }
-
-    if (
-      selectedInterestedIns.length > 0 &&
-      !selectedInterestedIns.includes(scan.interested_in)
+        if (
+      activitiesSelectedInterestedIns.length > 0 &&
+      !activitiesSelectedInterestedIns.includes(scan.interested_in)
     ) {
       return false;
     }
 
     if (
-      selectedInterestStatuses.length > 0 &&
-      !selectedInterestStatuses.includes(scan.interest_status)
+      activitiesSelectedInterestStatuses.length > 0 &&
+      !activitiesSelectedInterestStatuses.includes(scan.interest_status)
     ) {
       return false;
     }
 
     return true;
     })
+     // Sorting the filtered scans
+     .sort((a, b) => {
+      if (!activitiesSortBy) return 0;
 
-    // Sorting the filtered scans
-    .sort((a, b) => {
-      if (!sortBy) return 0;
+      // Helper function to handle null or undefined values for sorting dates
+      const safeDate = (date: string | null | undefined): number => {
+          return date ? new Date(date).getTime() : 0;
+      };
 
-        // Helper function to handle null or undefined values for sorting dates
-        const safeDate = (date: string | null | undefined): number => {
-            return date ? new Date(date).getTime() : 0;
-        };
-      
-        switch (sortBy) {
-          case "a_to_z":
-            return (a.customers?.name || '').localeCompare(b.customers?.name || '');
-          case "z_to_a":
-            return (b.customers?.name || '').localeCompare(a.customers?.name || '');
-          case "scans_low_to_high":
-            return a.scan_count - b.scan_count;
-          case "scans_high_to_low":
-            return b.scan_count - a.scan_count;
-          case "last_scanned_newest_to_oldest":
-            return safeDate(b.$createdAt) - safeDate(a.$createdAt);
-          case "last_scanned_oldest_to_newest":
-            return safeDate(a.$createdAt) - safeDate(b.$createdAt);
-          default:
-            return 0;
-        }
-
+      switch (activitiesSortBy) {
+        case "a_to_z":
+          return (a.customers?.name || '').localeCompare(b.customers?.name || '');
+        case "z_to_a":
+          return (b.customers?.name || '').localeCompare(a.customers?.name || '');
+        case "scans_low_to_high":
+          return a.scan_count - b.scan_count;
+        case "scans_high_to_low":
+          return b.scan_count - a.scan_count;
+        case "last_scanned_newest_to_oldest":
+          return safeDate(b.$createdAt) - safeDate(a.$createdAt);
+        case "last_scanned_oldest_to_newest":
+          return safeDate(a.$createdAt) - safeDate(b.$createdAt);
+        default:
+          return 0;
+      }
     });
 
   const hasActiveFilters =
-    selectedInterestedIns.length > 0 ||
-    selectedInterestStatuses.length > 0 ||
-    !!sortBy || fromDate?.isValid() || toDate?.isValid();
+    activitiesSelectedInterestedIns.length > 0 ||
+    activitiesSelectedInterestStatuses.length > 0 ||
+    !!activitiesSortBy || activitiesFromDate?.isValid() || activitiesToDate?.isValid();
+
 
   if (status === "loading") {
     return (
@@ -243,7 +254,7 @@ const HomeScreen = () => {
   }
 
   return (
-    <View className="flex-1 text-xs bg-white px-5 pt-20 pb-32">
+    <ScrollView className="flex-1 text-xs bg-white px-5 pt-20 pb-20" ref={scrollViewRef}>
       {/* Header Section */}
       <View className="flex-row justify-between items-center mt-5 min-h-10">
         <Text className="text-2xl font-semibold">Activities</Text>
@@ -289,23 +300,23 @@ const HomeScreen = () => {
 
       {/* Today's Summary */}
       <View className="flex-row justify-between rounded-md bg-color3 p-3 mt-5">
-      <Text className="text-xs font-bold">
-        {fromDate && fromDate.isValid() || toDate && toDate.isValid() ? "Date Range" : "Today"}{" "}
-        <Text className="text-[10px] font-normal">
-          {fromDate && fromDate.isValid() || toDate && toDate.isValid() ? (
-            <>
-              ({fromDate && fromDate.isValid() ? fromDate.format("DD MMM") : ""}
-              {toDate && toDate.isValid() ? ` - ${toDate.format("DD MMM YYYY")}` : ""})
-            </>
-          ) : (
-            `(${new Date().toLocaleDateString("en-US", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })})`
-          )}
-        </Text>
-      </Text>
+          <Text className="text-xs font-bold">
+           {activitiesFromDate && activitiesFromDate.isValid() || activitiesToDate && activitiesToDate.isValid() ? "Date Range" : "Today"}{" "}
+            <Text className="text-[10px] font-normal">
+              {activitiesFromDate && activitiesFromDate.isValid() || activitiesToDate && activitiesToDate.isValid() ? (
+                <>
+                  ({activitiesFromDate && activitiesFromDate.isValid() ? activitiesFromDate.format("DD MMM") : ""}
+                  {activitiesToDate && activitiesToDate.isValid() ? ` - ${activitiesToDate.format("DD MMM YYYY")}` : ""})
+                </>
+              ) : (
+                 `(${new Date().toLocaleDateString("en-US", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })})`
+               )}
+          </Text>
+          </Text>
         <Text className="text-[10px]">
           #scans:{" "}
           <Text className="text-xs font-bold">
@@ -412,10 +423,6 @@ const HomeScreen = () => {
         ))
       )}
 
-      {/* Logout Button */}
-      <View className="px-5 mt-5">
-        <ButtonComponent label="Logout" var2 onPress={handleLogout} />
-      </View>
 
       {/* Filter Modal */}
       <Modal
@@ -437,7 +444,7 @@ const HomeScreen = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 };
 

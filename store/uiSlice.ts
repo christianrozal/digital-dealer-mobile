@@ -4,94 +4,174 @@ import dayjs from "dayjs";
 
 interface UIState {
   isActivitiesFilterVisible: boolean;
-  selectedInterestedIns: string[];
-  selectedInterestStatuses: string[];
-  sortBy: "follow_up_date" | "last_scanned" | null;
-  fromDate: dayjs.Dayjs | null; // Added for date range
-  toDate: dayjs.Dayjs | null; // Added for date range
+  activitiesSelectedInterestedIns: string[];
+  activitiesSelectedInterestStatuses: string[];
+  activitiesSortBy: "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest" | null;
+  activitiesFromDate: dayjs.Dayjs | null;
+  activitiesToDate: dayjs.Dayjs | null;
+
+  isCustomersFilterVisible: boolean;
+  customersSelectedInterestedIns: string[];
+  customersSelectedInterestStatuses: string[];
+  customersSortBy: "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest" | null;
+  customersFromDate: dayjs.Dayjs | null;
+  customersToDate: dayjs.Dayjs | null;
 }
 
 const initialState: UIState = {
   isActivitiesFilterVisible: false,
-  selectedInterestedIns: [],
-  selectedInterestStatuses: [],
-  sortBy: null,
-  fromDate: null, // Initial state for fromDate
-  toDate: null, // Initial state for toDate
+  activitiesSelectedInterestedIns: [],
+  activitiesSelectedInterestStatuses: [],
+  activitiesSortBy: null,
+  activitiesFromDate: null,
+  activitiesToDate: null,
+
+  isCustomersFilterVisible: false,
+  customersSelectedInterestedIns: [],
+  customersSelectedInterestStatuses: [],
+  customersSortBy: null,
+  customersFromDate: null,
+  customersToDate: null,
 };
 
 const uiSlice = createSlice({
   name: "ui",
   initialState,
   reducers: {
+    // Activities Filter Reducers
     showActivitiesFilter: (state) => {
       state.isActivitiesFilterVisible = true;
     },
     hideActivitiesFilter: (state) => {
       state.isActivitiesFilterVisible = false;
     },
-    toggleInterestedIn: (state, action: PayloadAction<string>) => {
-      const index = state.selectedInterestedIns.indexOf(action.payload);
+    toggleActivitiesInterestedIn: (state, action: PayloadAction<string>) => {
+      const index = state.activitiesSelectedInterestedIns.indexOf(action.payload);
       if (index >= 0) {
-        state.selectedInterestedIns.splice(index, 1);
+        state.activitiesSelectedInterestedIns.splice(index, 1);
       } else {
-        state.selectedInterestedIns.push(action.payload);
+        state.activitiesSelectedInterestedIns.push(action.payload);
       }
     },
-    toggleInterestStatus: (state, action: PayloadAction<string>) => {
-      const index = state.selectedInterestStatuses.indexOf(action.payload);
+    toggleActivitiesInterestStatus: (state, action: PayloadAction<string>) => {
+      const index = state.activitiesSelectedInterestStatuses.indexOf(action.payload);
       if (index >= 0) {
-        state.selectedInterestStatuses.splice(index, 1);
+        state.activitiesSelectedInterestStatuses.splice(index, 1);
       } else {
-        state.selectedInterestStatuses.push(action.payload);
+        state.activitiesSelectedInterestStatuses.push(action.payload);
       }
     },
-    resetInterestedIns: (state) => {
-      state.selectedInterestedIns = [];
+    resetActivitiesInterestedIns: (state) => {
+      state.activitiesSelectedInterestedIns = [];
     },
-    resetInterestStatuses: (state) => {
-      state.selectedInterestStatuses = [];
+    resetActivitiesInterestStatuses: (state) => {
+      state.activitiesSelectedInterestStatuses = [];
     },
-    resetAllFilters: (state) => {
-      state.selectedInterestedIns = [];
-      state.selectedInterestStatuses = [];
-      state.sortBy = null;
-      state.fromDate = null; // Reset fromDate
-      state.toDate = null; // Reset toDate
+    resetAllActivitiesFilters: (state) => {
+      state.activitiesSelectedInterestedIns = [];
+      state.activitiesSelectedInterestStatuses = [];
+      state.activitiesSortBy = null;
+      state.activitiesFromDate = null;
+      state.activitiesToDate = null;
     },
-    setSortBy: (state, action: PayloadAction<UIState["sortBy"]>) => {
-      state.sortBy = action.payload;
+    setActivitiesSortBy: (state, action: PayloadAction<UIState["activitiesSortBy"]>) => {
+      state.activitiesSortBy = action.payload;
     },
-    resetSortBy: (state) => {
-      state.sortBy = null;
+    resetActivitiesSortBy: (state) => {
+      state.activitiesSortBy = null;
     },
-    // New reducers for date range
-    setFromDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
-      state.fromDate = action.payload;
+    setActivitiesFromDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+      state.activitiesFromDate = action.payload;
     },
-    setToDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
-      state.toDate = action.payload;
+    setActivitiesToDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+      state.activitiesToDate = action.payload;
     },
-    resetDateRange: (state) => {
-      state.fromDate = null;
-      state.toDate = null;
+     resetActivitiesDateRange: (state) => {
+      state.activitiesFromDate = null;
+      state.activitiesToDate = null;
     },
+
+    // Customers Filter Reducers
+    showCustomersFilter: (state) => {
+      state.isCustomersFilterVisible = true;
+    },
+    hideCustomersFilter: (state) => {
+      state.isCustomersFilterVisible = false;
+    },
+      toggleCustomersInterestedIn: (state, action: PayloadAction<string>) => {
+        const index = state.customersSelectedInterestedIns.indexOf(action.payload);
+        if (index >= 0) {
+          state.customersSelectedInterestedIns.splice(index, 1);
+        } else {
+          state.customersSelectedInterestedIns.push(action.payload);
+        }
+      },
+      toggleCustomersInterestStatus: (state, action: PayloadAction<string>) => {
+        const index = state.customersSelectedInterestStatuses.indexOf(action.payload);
+        if (index >= 0) {
+          state.customersSelectedInterestStatuses.splice(index, 1);
+        } else {
+          state.customersSelectedInterestStatuses.push(action.payload);
+        }
+      },
+    resetCustomersInterestedIns: (state) => {
+      state.customersSelectedInterestedIns = [];
+    },
+    resetCustomersInterestStatuses: (state) => {
+      state.customersSelectedInterestStatuses = [];
+    },
+    resetAllCustomersFilters: (state) => {
+      state.customersSelectedInterestedIns = [];
+      state.customersSelectedInterestStatuses = [];
+      state.customersSortBy = null;
+        state.customersFromDate = null;
+        state.customersToDate = null;
+    },
+    setCustomersSortBy: (state, action: PayloadAction<UIState["customersSortBy"]>) => {
+      state.customersSortBy = action.payload;
+    },
+      resetCustomersSortBy: (state) => {
+          state.customersSortBy = null;
+      },
+    setCustomersFromDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+        state.customersFromDate = action.payload;
+      },
+    setCustomersToDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+        state.customersToDate = action.payload;
+      },
+    resetCustomersDateRange: (state) => {
+        state.customersFromDate = null;
+        state.customersToDate = null;
+      },
   },
 });
 
 export const {
   showActivitiesFilter,
   hideActivitiesFilter,
-  toggleInterestedIn,
-  toggleInterestStatus,
-  resetInterestedIns,
-  resetInterestStatuses,
-  resetAllFilters,
-  setSortBy,
-  resetSortBy,
-  setFromDate, // Export new actions
-  setToDate, // Export new actions
-  resetDateRange, // Export new action
+  toggleActivitiesInterestedIn,
+  toggleActivitiesInterestStatus,
+  resetActivitiesInterestedIns,
+  resetActivitiesInterestStatuses,
+  resetAllActivitiesFilters,
+  setActivitiesSortBy,
+  resetActivitiesSortBy,
+  setActivitiesFromDate,
+  setActivitiesToDate,
+  resetActivitiesDateRange,
+
+  showCustomersFilter,
+  hideCustomersFilter,
+    toggleCustomersInterestedIn,
+    toggleCustomersInterestStatus,
+  resetCustomersInterestedIns,
+  resetCustomersInterestStatuses,
+  resetAllCustomersFilters,
+  setCustomersSortBy,
+  resetCustomersSortBy,
+    setCustomersFromDate,
+    setCustomersToDate,
+    resetCustomersDateRange,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

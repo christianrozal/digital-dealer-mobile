@@ -1,19 +1,19 @@
 import { View, Text, TouchableOpacity, Modal, ScrollView } from "react-native";
-import React, { useState, useMemo } from "react"; // Import useMemo
+import React, { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import {
   hideActivitiesFilter,
-  toggleInterestedIn,
-  toggleInterestStatus,
-  resetInterestedIns,
-  resetInterestStatuses,
-  resetAllFilters,
-  setSortBy,
-  resetSortBy,
-  setFromDate,
-  setToDate,
-  resetDateRange,
+  toggleActivitiesInterestedIn,
+  toggleActivitiesInterestStatus,
+  resetActivitiesInterestedIns,
+  resetActivitiesInterestStatuses,
+  resetAllActivitiesFilters,
+  setActivitiesSortBy,
+  resetActivitiesSortBy,
+  setActivitiesFromDate,
+  setActivitiesToDate,
+  resetActivitiesDateRange,
 } from "@/store/uiSlice";
 import CloseIcon from "./svg/closeIcon";
 import ButtonComponent from "./button";
@@ -23,39 +23,44 @@ import Calendar2Icon from "./svg/calendar2";
 
 const ActivitiesFilter = () => {
   const dispatch = useDispatch();
-  const { selectedInterestedIns, selectedInterestStatuses, sortBy, fromDate, toDate } =
-    useSelector((state: RootState) => state.ui);
+  const {
+    activitiesSelectedInterestedIns,
+    activitiesSelectedInterestStatuses,
+    activitiesSortBy,
+    activitiesFromDate,
+    activitiesToDate,
+  } = useSelector((state: RootState) => state.ui);
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
 
-
-  // Calculate the filter count using useMemo for optimization
-  const filterCount = useMemo(() => {
-    let count = 0;
-    if (selectedInterestedIns.length > 0) {
-      count++;
-    }
-    if (selectedInterestStatuses.length > 0) {
-      count++;
-    }
-    if (sortBy) {
-      count++;
-    }
-    if (fromDate || toDate) { // Check if either fromDate or toDate is selected
-      count++;
-    }
-    return count;
-  }, [selectedInterestedIns, selectedInterestStatuses, sortBy, fromDate, toDate]);
+    // Calculate the filter count using useMemo for optimization
+    const filterCount = useMemo(() => {
+      let count = 0;
+      if (activitiesSelectedInterestedIns.length > 0) {
+        count++;
+      }
+      if (activitiesSelectedInterestStatuses.length > 0) {
+        count++;
+      }
+      if (activitiesSortBy) {
+        count++;
+      }
+      if (activitiesFromDate || activitiesToDate) {
+        count++;
+      }
+      return count;
+    }, [activitiesSelectedInterestedIns, activitiesSelectedInterestStatuses, activitiesSortBy, activitiesFromDate, activitiesToDate]);
 
 
   // Console logs to check Redux state values
   console.log("ActivitiesFilter - useSelector values:");
-  console.log("selectedInterestedIns:", selectedInterestedIns);
-  console.log("selectedInterestStatuses:", selectedInterestStatuses);
-  console.log("sortBy:", sortBy);
-  console.log("fromDate:", fromDate ? fromDate.format("YYYY-MM-DD") : fromDate); // Format dayjs for easier reading
-  console.log("toDate:", toDate ? toDate.format("YYYY-MM-DD") : toDate);       // Format dayjs for easier reading
+  console.log("activitiesSelectedInterestedIns:", activitiesSelectedInterestedIns);
+  console.log("activitiesSelectedInterestStatuses:", activitiesSelectedInterestStatuses);
+  console.log("activitiesSortBy:", activitiesSortBy);
+  console.log("activitiesFromDate:", activitiesFromDate ? activitiesFromDate.format("YYYY-MM-DD") : activitiesFromDate); // Format dayjs for easier reading
+  console.log("activitiesToDate:", activitiesToDate ? activitiesToDate.format("YYYY-MM-DD") : activitiesToDate);       // Format dayjs for easier reading
+
 
   const INTEREST_OPTIONS = [
     { value: "Buying", label: "Buying" },
@@ -71,17 +76,18 @@ const ActivitiesFilter = () => {
     { value: "Purchased", label: "Purchased" },
   ];
 
-  const SORT_OPTIONS = [
-    { value: "a_to_z", label: "A to Z" },
-    { value: "z_to_a", label: "Z to A" },
-    { value: "scans_low_to_high", label: "Number of scans (lowest to highest)" },
-    { value: "scans_high_to_low", label: "Number of scans (highest to lowest)" },
-    { value: "last_scanned_newest_to_oldest", label: "Last scanned date (newest to oldest)" },
-    { value: "last_scanned_oldest_to_newest", label: "Last scanned date (oldest to newest)" },
-  ];
+    const SORT_OPTIONS = [
+        { value: "a_to_z", label: "A to Z" },
+        { value: "z_to_a", label: "Z to A" },
+        { value: "scans_low_to_high", label: "Number of scans (lowest to highest)" },
+        { value: "scans_high_to_low", label: "Number of scans (highest to lowest)" },
+        { value: "last_scanned_newest_to_oldest", label: "Last scanned date (newest to oldest)" },
+        { value: "last_scanned_oldest_to_newest", label: "Last scanned date (oldest to newest)" },
+    ];
+
 
   const getInterestOptionStyle = (value: string) => {
-    const isSelected = selectedInterestedIns.includes(value);
+    const isSelected = activitiesSelectedInterestedIns.includes(value);
     switch (value) {
       case "Buying":
         return isSelected ? "border-green-400 bg-green-100" : "border-gray-200";
@@ -99,7 +105,7 @@ const ActivitiesFilter = () => {
   };
 
   const getStatusOptionStyle = (value: string) => {
-    const isSelected = selectedInterestStatuses.includes(value);
+    const isSelected = activitiesSelectedInterestStatuses.includes(value);
     switch (value) {
       case "Hot":
         return isSelected ? "border-red-400 bg-red-100" : "border-gray-200";
@@ -119,7 +125,7 @@ const ActivitiesFilter = () => {
   };
 
   const getInterestTextStyle = (value: string) => {
-    const isSelected = selectedInterestedIns.includes(value);
+    const isSelected = activitiesSelectedInterestedIns.includes(value);
     switch (value) {
       case "Buying":
         return isSelected ? "text-green-600" : "text-gray-400";
@@ -135,7 +141,7 @@ const ActivitiesFilter = () => {
   };
 
   const getStatusTextStyle = (value: string) => {
-    const isSelected = selectedInterestStatuses.includes(value);
+    const isSelected = activitiesSelectedInterestStatuses.includes(value);
     switch (value) {
       case "Hot":
         return isSelected ? "text-red-600" : "text-gray-400";
@@ -162,20 +168,20 @@ const ActivitiesFilter = () => {
         <View className="flex-1 justify-end bg-transparent">
           <View className="h-2/3 bg-white rounded-t-3xl" style={{ padding: 40 }}>
             <CalendarFilter
-             onClose={(date) => {
-              if (date) {
-                if (selectingFor === "from") {
-                  dispatch(setFromDate(date)); // Dispatch Redux action
-                } else {
-                  dispatch(setToDate(date)); // Dispatch Redux action
+              onClose={(date) => {
+                if (date) {
+                  if (selectingFor === "from") {
+                    dispatch(setActivitiesFromDate(date));
+                  } else {
+                    dispatch(setActivitiesToDate(date));
+                  }
                 }
-              }
-              setShowCalendar(false);
-            }}
-              initialDate={selectingFor === "from" ? fromDate : toDate}
-              fromDate={fromDate} // Pass fromDate
-              toDate={toDate}     // Pass toDate
-              selectingFor={selectingFor} // Pass selectingFor
+                setShowCalendar(false);
+              }}
+              initialDate={selectingFor === "from" ? activitiesFromDate : activitiesToDate}
+              fromDate={activitiesFromDate}
+              toDate={activitiesToDate}
+              selectingFor={selectingFor}
             />
           </View>
         </View>
@@ -188,7 +194,7 @@ const ActivitiesFilter = () => {
           <TouchableOpacity
             className="text-color1 font-semibold text-sm"
             onPress={() => {
-              dispatch(resetDateRange()); // Dispatch Redux action
+              dispatch(resetActivitiesDateRange());
             }}
           >
             Reset
@@ -206,7 +212,7 @@ const ActivitiesFilter = () => {
               }}
             >
               <Text className="text-gray-700 font-semibold text-xs">
-                {fromDate ? fromDate.format("DD-MM-YYYY") : "Select date"}
+                {activitiesFromDate ? activitiesFromDate.format("DD-MM-YYYY") : "Select date"}
               </Text>
               <Calendar2Icon width={20} height={20} />
             </TouchableOpacity>
@@ -222,7 +228,7 @@ const ActivitiesFilter = () => {
               }}
             >
               <Text className="text-gray-700 font-semibold text-xs">
-                {toDate ? toDate.format("DD-MM-YYYY") : "Select date"}
+                {activitiesToDate ? activitiesToDate.format("DD-MM-YYYY") : "Select date"}
               </Text>
               <Calendar2Icon width={20} height={20} />
             </TouchableOpacity>
@@ -232,8 +238,6 @@ const ActivitiesFilter = () => {
 
       {/* Sort By Filter */}
       <View className="mt-4 relative z-10">
-        {" "}
-        {/* Add relative positioning container */}
         <Text className="text-xs text-gray-600 font-medium">Sort By</Text>
         <TouchableOpacity
           className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
@@ -241,10 +245,10 @@ const ActivitiesFilter = () => {
           onPress={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
         >
           <Text
-            className={`text-xs ${sortBy ? "text-gray-600" : "text-gray-400"}`}
+            className={`text-xs ${activitiesSortBy ? "text-gray-600" : "text-gray-400"}`}
           >
-            {sortBy
-              ? SORT_OPTIONS.find((o) => o.value === sortBy)?.label
+             {activitiesSortBy
+              ? SORT_OPTIONS.find((o) => o.value === activitiesSortBy)?.label
               : "Select sort option"}
           </Text>
 
@@ -273,25 +277,25 @@ const ActivitiesFilter = () => {
               <TouchableOpacity
                 key={option.value}
                 className={`rounded-md p-3 flex-row items-center justify-between ${
-                  sortBy === option.value ? "bg-blue-50" : "bg-white"
+                  activitiesSortBy === option.value ? "bg-blue-50" : "bg-white"
                 }`}
                 onPress={() => {
-                  dispatch(setSortBy(option.value));
+                  dispatch(setActivitiesSortBy(option.value));
                   setIsSortDropdownOpen(false);
                 }}
               >
                 <Text
                   className={`text-xs ${
-                    sortBy === option.value ? "text-color1" : "text-gray-700"
+                    activitiesSortBy === option.value ? "text-color1" : "text-gray-700"
                   }`}
                 >
                   {option.label}
                 </Text>
-                {sortBy === option.value && (
+                {activitiesSortBy === option.value && (
                   <TouchableOpacity
                     onPress={(e) => {
                       e.stopPropagation();
-                      dispatch(resetSortBy());
+                      dispatch(resetActivitiesSortBy());
                       setIsSortDropdownOpen((prev) => !prev);
                     }}
                   >
@@ -315,7 +319,7 @@ const ActivitiesFilter = () => {
             {INTEREST_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.value}
-                onPress={() => dispatch(toggleInterestedIn(option.value))}
+                onPress={() => dispatch(toggleActivitiesInterestedIn(option.value))}
                 className={`rounded-full border px-3 ${getInterestOptionStyle(
                   option.value
                 )}`}
@@ -331,8 +335,8 @@ const ActivitiesFilter = () => {
               </TouchableOpacity>
             ))}
           </View>
-          {selectedInterestedIns.length > 0 && (
-            <TouchableOpacity onPress={() => dispatch(resetInterestedIns())}>
+          {activitiesSelectedInterestedIns.length > 0 && (
+            <TouchableOpacity onPress={() => dispatch(resetActivitiesInterestedIns())}>
               <CloseIcon width={16} height={16} />
             </TouchableOpacity>
           )}
@@ -352,7 +356,7 @@ const ActivitiesFilter = () => {
             {INTEREST_STATUS_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.value}
-                onPress={() => dispatch(toggleInterestStatus(option.value))}
+                onPress={() => dispatch(toggleActivitiesInterestStatus(option.value))}
                 className={`rounded-full border px-3 ${getStatusOptionStyle(
                   option.value
                 )}`}
@@ -368,24 +372,24 @@ const ActivitiesFilter = () => {
               </TouchableOpacity>
             ))}
           </View>
-          {selectedInterestStatuses.length > 0 && (
-            <TouchableOpacity onPress={() => dispatch(resetInterestStatuses())}>
+          {activitiesSelectedInterestStatuses.length > 0 && (
+            <TouchableOpacity onPress={() => dispatch(resetActivitiesInterestStatuses())}>
               <CloseIcon width={16} height={16} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-   {/* Action Buttons */}
+      {/* Action Buttons */}
       <View className="flex-row mt-5 gap-3 w-full">
         <ButtonComponent
           label="Reset All"
           var2
           className="flex-1"
-          onPress={() => dispatch(resetAllFilters())}
+          onPress={() => dispatch(resetAllActivitiesFilters())}
         />
         <ButtonComponent
-          label={`Apply Filters (${filterCount})`} // Use the calculated filterCount here
+          label={`Apply Filters (${filterCount})`}
           className="flex-1"
           onPress={() => dispatch(hideActivitiesFilter())}
         />

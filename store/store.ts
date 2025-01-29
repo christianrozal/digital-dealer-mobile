@@ -4,6 +4,7 @@ import userReducer from './userSlice';
 import sidePaneReducer from './sidePaneSlice';
 import consultantReducer from './consultantSlice';
 import uiReducer from './uiSlice';
+import customerReducer from './customerSlice';
 
 const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ const store = configureStore({
     sidePane: sidePaneReducer,
     consultant: consultantReducer,
     ui: uiReducer,
+    customer: customerReducer,
   },
 });
 
