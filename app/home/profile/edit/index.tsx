@@ -246,26 +246,26 @@ const EditProfileScreen = () => {
                   </TouchableOpacity>
                   <View className='gap-3 mt-10'>
                       <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md placeholder:text-gray-500 text-sm focus:outline-color1"
+                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
                           placeholder="Full Name"
                           value={formData.name}
                           onChangeText={(text) => handleInputChange('name', text)}
                       />
                       <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md placeholder:text-gray-500 text-sm focus:outline-color1"
+                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
                           placeholder="Position"
                           value={formData.position}
                           onChangeText={(text) => handleInputChange('position', text)}
                       />
                       <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md placeholder:text-gray-500 text-sm focus:outline-color1"
+                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
                           placeholder="Email Address"
                           value={formData.email}
                           onChangeText={(text) => handleInputChange('email', text)}
                           keyboardType="email-address"
                       />
                       <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md placeholder:text-gray-500 text-sm focus:outline-color1"
+                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
                           placeholder="Phone Number"
                           value={formData.phone}
                           onChangeText={(text) => handleInputChange('phone', text)}
