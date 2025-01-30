@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// screens/EditProfileScreen.tsx
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import BackArrowIcon from '@/components/svg/backArrow';
 import AlexiumLogo2 from '@/components/svg/alexiumLogo2';
@@ -10,8 +11,8 @@ import CameraIcon from '@/components/svg/cameraIcon';
 import { Client, Storage, ID, Databases } from 'react-native-appwrite';
 import * as ImagePicker from 'react-native-image-picker';
 import { setConsultant } from '@/store/consultantSlice';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, runOnJS } from 'react-native-reanimated';
-import CheckIcon from '@/components/svg/checkIcon';
+import { setCustomerUpdateSuccess } from '@/store/uiSlice';
+
 
 // Initialize Appwrite client
 const client = new Client();
@@ -36,10 +37,6 @@ const EditProfileScreen = () => {
         phone: consultant?.phone || ''
     });
     const [loading, setLoading] = useState(false);
-    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-    const translateY = useSharedValue(-40); // Initial position above view
-    const animationDuration = 300;
-    const holdDuration = 2000;
 
 
 
@@ -50,6 +47,7 @@ const EditProfileScreen = () => {
             [field]: value
         }));
     };
+
 
     // Update profile information in database
     const handleUpdateProfile = async () => {
@@ -78,21 +76,15 @@ const EditProfileScreen = () => {
                 ...formData
             }));
 
-             // Show success message and animation
-             setShowSuccessMessage(true);
-             translateY.value = withTiming(20, { duration: animationDuration, easing: Easing.ease }, () => {
-                // After slide down, hold for a second, and then animate out
-                setTimeout(() => {
-                  translateY.value = withTiming(-40, { duration: animationDuration, easing: Easing.ease }, () => {
-                     runOnJS(() => setShowSuccessMessage(false))();
-                 });
-                }, holdDuration);
-            });
+                dispatch(setCustomerUpdateSuccess(true));
+            // Navigate to profile screen
+            router.push("/home/profile");
 
-            Alert.alert('Success', 'Profile updated successfully!');
         } catch (error) {
             Alert.alert('Error', 'Failed to update profile');
             console.error('Update error:', error);
+           dispatch(setCustomerUpdateSuccess(false));
+
         } finally {
             setLoading(false);
         }
@@ -175,105 +167,86 @@ const EditProfileScreen = () => {
                     profileImageId: uploadResponse.$id
                 }));
 
-                // Show success message and animation
-                 setShowSuccessMessage(true);
-                 translateY.value = withTiming(40, { duration: animationDuration, easing: Easing.ease }, () => {
-                    // After slide down, hold for a second, and then animate out
-                    setTimeout(() => {
-                      translateY.value = withTiming(-40, { duration: animationDuration, easing: Easing.ease }, () => {
-                         runOnJS(() => setShowSuccessMessage(false))();
-                     });
-                    }, holdDuration);
-                });
 
-                Alert.alert('Success', 'Profile image updated successfully!');
+                  dispatch(setCustomerUpdateSuccess(true));
+                // Navigate to profile screen
+                   router.push("/home/profile");
+
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to upload image');
             console.error('Image upload error:', error);
+           dispatch(setCustomerUpdateSuccess(false));
         }
     };
-    
-    const animatedStyle = useAnimatedStyle(() => {
-      return {
-        transform: [{ translateY: translateY.value }]
-      }
-    })
+
 
     return (
-      <>
-      {showSuccessMessage && (
-        <Animated.View style={animatedStyle} className="w-full z-30 absolute">
-            <View className="flex-row items-center justify-center gap-3  w-4/5 mx-auto bg-white rounded-lg p-3 border border-color9" style={{ boxShadow: "0px 4px 10px 0px rgba(7, 170, 48, 0.25)"}}>
-                <CheckIcon /> <Text className='text-[#018221] text-sm'>Profile Updated</Text>
-            </View>
-       </Animated.View>
-     )}
-      <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
-          <View>
-              {/* Header */}
-              <View className="flex-row w-full justify-between items-center">
-                  <TouchableOpacity onPress={() => router.push("/home/profile")}>
-                      <BackArrowIcon />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => router.push("/home")}>
-                      <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
-                  </TouchableOpacity>
-                  <View style={{ width: 18 }} />
-              </View>
+        <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
+            <View>
+                {/* Header */}
+                <View className="flex-row w-full justify-between items-center">
+                    <TouchableOpacity onPress={() => router.push("/home/profile")}>
+                        <BackArrowIcon />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push("/home")}>
+                        <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
+                    </TouchableOpacity>
+                    <View style={{ width: 18 }} />
+                </View>
 
-              <View className=' px-4'>
-                  <Text className="text-2xl font-semibold mt-10">Edit Profile</Text>
-                  <TouchableOpacity className='mt-10 mx-auto' onPress={handleImageUpload}>
-                      <View
-                          className="bg-color1 rounded-full flex items-center justify-center"
-                          style={{ width: 100, height: 100 }}
-                      >
-                          {(profileImage || consultant?.['profile-icon']) ? (
-                              <Image
-                                  source={{ uri: profileImage || consultant['profile-icon'] }}
-                                  style={{ width: 100, height: 100, borderRadius: 50 }}
-                              />
-                          ) : (
-                                  <Text className="text-white font-bold" style={{ fontSize: 30 }}>
-                                      {getInitials(consultant?.name)}
-                                  </Text>
-                          )}
-                      </View>
-                      <View className='ml-auto -mt-5'>
-                          <CameraIcon />
-                      </View>
-                  </TouchableOpacity>
-                  <View className='gap-3 mt-10'>
-                      <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                          placeholder="Full Name"
-                          value={formData.name}
-                          onChangeText={(text) => handleInputChange('name', text)}
-                      />
-                      <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                          placeholder="Position"
-                          value={formData.position}
-                          onChangeText={(text) => handleInputChange('position', text)}
-                      />
-                      <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                          placeholder="Email Address"
-                          value={formData.email}
-                          onChangeText={(text) => handleInputChange('email', text)}
-                          keyboardType="email-address"
-                      />
-                      <TextInput
-                          className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                          placeholder="Phone Number"
-                          value={formData.phone}
-                          onChangeText={(text) => handleInputChange('phone', text)}
-                          keyboardType="phone-pad"
-                      />
-                  </View>
-              </View>
-          </View>
+                <View className=' px-4'>
+                    <Text className="text-2xl font-semibold mt-10">Edit Profile</Text>
+                    <TouchableOpacity className='mt-10 mx-auto' onPress={handleImageUpload}>
+                        <View
+                            className="bg-color1 rounded-full flex items-center justify-center"
+                            style={{ width: 100, height: 100 }}
+                        >
+                            {(profileImage || consultant?.['profile-icon']) ? (
+                                <Image
+                                    source={{ uri: profileImage || consultant['profile-icon'] }}
+                                    style={{ width: 100, height: 100, borderRadius: 50 }}
+                                />
+                            ) : (
+                                    <Text className="text-white font-bold" style={{ fontSize: 30 }}>
+                                        {getInitials(consultant?.name)}
+                                    </Text>
+                            )}
+                        </View>
+                        <View className='ml-auto -mt-5'>
+                            <CameraIcon />
+                        </View>
+                    </TouchableOpacity>
+                    <View className='gap-3 mt-10'>
+                        <TextInput
+                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
+                            placeholder="Full Name"
+                            value={formData.name}
+                            onChangeText={(text) => handleInputChange('name', text)}
+                        />
+                        <TextInput
+                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
+                            placeholder="Position"
+                            value={formData.position}
+                            onChangeText={(text) => handleInputChange('position', text)}
+                        />
+                        <TextInput
+                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
+                            placeholder="Email Address"
+                            value={formData.email}
+                            onChangeText={(text) => handleInputChange('email', text)}
+                            keyboardType="email-address"
+                        />
+                        <TextInput
+                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
+                            placeholder="Phone Number"
+                            value={formData.phone}
+                            onChangeText={(text) => handleInputChange('phone', text)}
+                            keyboardType="phone-pad"
+                        />
+                    </View>
+                </View>
+            </View>
             <View>
                 <ButtonComponent
                     label={loading ? "Updating..." : "Update Profile"}
@@ -283,7 +256,6 @@ const EditProfileScreen = () => {
                 />
             </View>
         </View>
-        </>
     );
 };
 

@@ -62,7 +62,6 @@ const HomeLayout = () => {
         "/home/customers",
         "/home/analytics",
         "/home/notifications",
-        "/home/qr-scanner",
     ];
 
     const shouldRenderLayout = validPaths.includes(pathname);

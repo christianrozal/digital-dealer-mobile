@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, TextInput, ScrollView } from "react-native";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image } from "react-native";
 import { router } from "expo-router";
 import { Checkbox } from "react-native-paper";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import dayjs from "dayjs";
 import BackArrowIcon from "@/components/svg/backArrow";
@@ -10,27 +10,53 @@ import Calendar2Icon from "@/components/svg/calendar2";
 import { useFocusEffect } from "@react-navigation/native";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ButtonComponent from "@/components/button";
+import { setSelectedCustomer } from "@/store/customerSlice";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { Client, Databases } from "react-native-appwrite";
+
+
+const client = new Client()
+  .setEndpoint("https://cloud.appwrite.io/v1")
+  .setProject("6780c774003170c68252");
+
+const databases = new Databases(client);
 
 
 const CustomerLogScreen = () => {
+
+    const DATABASE_ID = '67871d61002bf7e6bc9e'; // Replace with your database ID
+    const COMMENTS_COLLECTION_ID = '6799d2430037c51dc502';
+
     const selectedCustomer = useSelector(
-        (state: RootState) => state.customer.customersTabSelectedCustomer
+        (state: RootState) => state.customer.selectedCustomer
     );
 
+    const [comment, setComment] = useState('');
+
     const [value, setValue] = useState<string | null>(
-        selectedCustomer?.interestStatus || null
+        null
     );
-    const [interestedIn, setInterestedIn] = useState<string[]>(selectedCustomer?.interestedIn ? [selectedCustomer.interestedIn] : []);
+    const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const scrollViewRef = useRef<ScrollView>(null);
+    const dispatch = useDispatch();
+    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
 
     useFocusEffect(
         useCallback(() => {
-          // Reset scroll position when the screen comes into focus
-          scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+            // Reset scroll position when the screen comes into focus
+            scrollViewRef.current?.scrollTo({ y: 0, animated: false });
         }, [])
-      );
+    );
 
+    useEffect(() => {
+        if (selectedCustomer) {
+            setValue(selectedCustomer?.interestStatus || null);
+            setInterestedIn(selectedCustomer?.interestedIn ? selectedCustomer.interestedIn.split(',') : []);
+            setSelectedDate(selectedCustomer.lastScanned ? dayjs(selectedCustomer.lastScanned).toDate() : null);
+        }
+    }, [selectedCustomer]);
 
     if (!selectedCustomer) {
         return (
@@ -40,19 +66,36 @@ const CustomerLogScreen = () => {
         );
     }
 
-    const formatDate = (dateString: string) => {
-        return dayjs(dateString).format("D MMM YYYY h:mm A");
+    const formatDate = (date: Date | null) => {
+        if(!date) {
+            return 'No scan data'
+        }
+        return dayjs(date).format("D MMM YYYY h:mm A");
     };
 
+      const showDatePicker = () => {
+        setDatePickerVisibility(true);
+      };
+
+      const hideDatePicker = () => {
+        setDatePickerVisibility(false);
+      };
+
+      const handleConfirm = (date: Date) => {
+        setSelectedDate(date);
+        hideDatePicker();
+      };
+
+
     const handleCheckboxChange = (interestType: "Buying" | "Selling" | "Financing" | "Purchased") => {
-        
-         const newInterestedIn = [...interestedIn];
+
+        const newInterestedIn = [...interestedIn];
 
         if (newInterestedIn.includes(interestType)) {
-          const index = newInterestedIn.indexOf(interestType);
-          newInterestedIn.splice(index, 1);
+            const index = newInterestedIn.indexOf(interestType);
+            newInterestedIn.splice(index, 1);
         } else {
-          newInterestedIn.push(interestType);
+            newInterestedIn.push(interestType);
         }
 
         setInterestedIn(newInterestedIn)
@@ -66,63 +109,128 @@ const CustomerLogScreen = () => {
     };
 
 
-    const handleUpdate = () => {
- 
-       console.log("Update customer log");
-    }
+    const handleUpdate = async () => {
+        // Update customer data in Redux
+        const updatedCustomer = {
+            ...selectedCustomer,
+            interestStatus: value,
+            interestedIn: interestedIn.join(','),
+            lastScanned: selectedDate ? dayjs(selectedDate).toISOString() : null
+        };
+        dispatch(setSelectedCustomer(updatedCustomer));
+
+        // Submit comment to Appwrite
+        if (comment.trim() && selectedCustomer?.id) {
+            try {
+                await databases.createDocument(
+                    DATABASE_ID,
+                    COMMENTS_COLLECTION_ID,
+                    ID.unique(), // Auto-generate ID
+                    {
+                        customerId: selectedCustomer.id,
+                        text: comment,
+                        timestamp: new Date().toISOString()
+                    }
+                );
+                setComment(''); // Clear comment input
+            } catch (error) {
+                console.error('Error saving comment:', error);
+                // Add error handling (e.g., show toast message)
+            }
+        }
+
+        router.push("/home/customers/customer-details");
+    };
 
     const customRadioButton = (label: string, valueToSet: string) => {
         const isSelected = value === valueToSet;
         return (
             <TouchableOpacity
-            className="flex-row items-center"
-            onPress={() => handleInterestStatusChange(valueToSet)}
-        >
-             <View
-                className={`border mr-1 rounded-full  ${isSelected ? "border-color1" : "border-color4"
-                    }`}
-                style={{ width: 12, height: 12}}
+                className="flex-row items-center"
+                onPress={() => handleInterestStatusChange(valueToSet)}
             >
-                {isSelected && <View className="-translate-x-1/2 left-1/2 -translate-y-1/2 top-1/2" style={{position: 'absolute', width: 6, height: 6, backgroundColor: '#3D12FA', borderRadius: 100 }} />}
-            </View>
-            <Text
-                className={`text-[10px] ${isSelected ? "text-black" : "text-gray-500"
-                    }`}
-            >
-                {label}
-            </Text>
-        </TouchableOpacity>
+                <View
+                    className={`border mr-1 rounded-full  ${isSelected ? "border-color1" : "border-color4"
+                        }`}
+                    style={{ width: 12, height: 12 }}
+                >
+                    {isSelected && <View className="-translate-x-1/2 left-1/2 -translate-y-1/2 top-1/2" style={{ position: 'absolute', width: 6, height: 6, backgroundColor: '#3D12FA', borderRadius: 100 }} />}
+                </View>
+                <Text
+                    className={`text-[10px] ${isSelected ? "text-black" : "text-gray-500"
+                        }`}
+                >
+                    {label}
+                </Text>
+            </TouchableOpacity>
         );
     };
 
+    // Function to generate initials in the desired format
+    const generateInitials = (name: string | undefined) => {
+        if (!name) return "Us";
+
+        const nameParts = name.trim().split(" ");
+
+        const firstName = nameParts[0] || "";
+
+        if (firstName.length === 0) {
+            return "Us"
+        }
+
+        const firstInitial = firstName[0]?.toUpperCase() || "";
+        const secondInitial = firstName[1]?.toLowerCase() || "";
+
+
+        return `${firstInitial}${secondInitial}`
+    };
+
+    const renderProfileIcon = () => {
+        const profileIconUrl = selectedCustomer?.['profile-icon'];
+      
+        if (profileIconUrl && profileIconUrl !== 'black') { // Use the URL if it exists and is not black
+            return (
+                <Image
+                    source={{ uri: profileIconUrl }}
+                    style={{ width: 56, height: 56, borderRadius: 28}}
+                />
+            );
+        } else { // Fallback to initials
+           return (
+            <View
+                className="bg-color1 rounded-full flex items-center justify-center"
+                style={{ width: 56, height: 56 }}
+            >
+                <Text className="text-white font-bold text-sm">
+                    {generateInitials(selectedCustomer?.name)}
+                </Text>
+            </View>
+           )
+        }
+    };
+
+
     return (
         <ScrollView ref={scrollViewRef} className='pt-7 px-7 pb-12'>
-             {/* Header */}
-             <View className='flex-row w-full justify-between items-center'>
-                <TouchableOpacity onPress={() => { router.push("/home/customers/customer-details") }}>
+            {/* Header */}
+            <View className='flex-row w-full justify-between items-center'>
+                <TouchableOpacity onPress={() => { router.back() }}>
                     <BackArrowIcon />
                 </TouchableOpacity>
                 {/* Logo */}
                 <TouchableOpacity onPress={() => { router.push("/home") }}>
                     <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
                 </TouchableOpacity>
-                <View  style={{width: 18}} />
+                <View style={{ width: 18 }} />
             </View>
             <View className="mt-10"></View>
-               <Text className="text-2xl font-semibold">Customer Log</Text>
+            <Text className="text-2xl font-semibold">Customer Log</Text>
             <View>
 
 
                 {/* Customer Info */}
                 <View className="bg-color8 rounded-md px-5 py-7 mt-10 flex-row gap-5">
-                    <View
-                        className="bg-color1 rounded-full flex items-center justify-center"
-                        style={{ width: 56, height: 56 }}
-                    >
-                        <Text className="text-white font-bold text-sm">
-                            {selectedCustomer?.name?.slice(0, 2).toUpperCase() || "CU"}
-                        </Text>
-                    </View>
+                  {renderProfileIcon()}
                     <View className="gap-1">
                         <Text className="text-white text-[10px]">
                             Customer Name: <Text className="font-bold">{selectedCustomer.name || "No name"}</Text>
@@ -162,7 +270,7 @@ const CustomerLogScreen = () => {
                         >
                             <View className="scale-75">
                                 <Checkbox
-                                   status={interestedIn.includes("Selling") ? "checked" : "unchecked"}
+                                    status={interestedIn.includes("Selling") ? "checked" : "unchecked"}
                                     color="#3D12FA"
                                 />
                             </View>
@@ -175,7 +283,7 @@ const CustomerLogScreen = () => {
                         >
                             <View className="scale-75">
                                 <Checkbox
-                                   status={interestedIn.includes("Financing") ? "checked" : "unchecked"}
+                                    status={interestedIn.includes("Financing") ? "checked" : "unchecked"}
                                     color="#3D12FA"
                                 />
                             </View>
@@ -188,7 +296,7 @@ const CustomerLogScreen = () => {
                         >
                             <View className="scale-75">
                                 <Checkbox
-                                   status={interestedIn.includes("Purchased") ? "checked" : "unchecked"}
+                                    status={interestedIn.includes("Purchased") ? "checked" : "unchecked"}
                                     color="#3D12FA"
                                 />
                             </View>
@@ -201,11 +309,11 @@ const CustomerLogScreen = () => {
                 <View className="mt-3">
                     <Text className="text-[10px] text-gray-500">Interest Status</Text>
                     <View className="flex-row gap-3 mt-3">
-                        {customRadioButton("Hot", "hot")}
-                        {customRadioButton("Warm", "warm")}
-                        {customRadioButton("Cold", "cold")}
-                        {customRadioButton("Not Interested", "not-interested")}
-                        {customRadioButton("Bought", "bought")}
+                        {customRadioButton("Hot", "Hot")}
+                        {customRadioButton("Warm", "Warm")}
+                        {customRadioButton("Cold", "Cold")}
+                        {customRadioButton("Not Interested", "Not Interested")}
+                        {customRadioButton("Bought", "Bought")}
                     </View>
                 </View>
 
@@ -220,14 +328,21 @@ const CustomerLogScreen = () => {
                             padding: 10,
                         }}
                         className="mt-3"
+                         onPress={showDatePicker}
                     >
                         <View className="flex-row justify-between items-center">
                             <Text className="text-xs">
-                                {selectedCustomer.lastScanned ? formatDate(selectedCustomer.lastScanned) : 'No scan data'}
+                            {formatDate(selectedDate)}
                             </Text>
                             <Calendar2Icon width={16} height={16} />
                         </View>
                     </TouchableOpacity>
+                      <DateTimePickerModal
+                           isVisible={isDatePickerVisible}
+                            mode="date"
+                            onConfirm={handleConfirm}
+                            onCancel={hideDatePicker}
+                        />
                 </View>
 
                 <View className="mt-10 flex-row gap-5">
@@ -249,6 +364,8 @@ const CustomerLogScreen = () => {
                     placeholder="Add your comment"
                     multiline={true}
                     numberOfLines={4}
+                    value={comment}
+                    onChangeText={setComment}
                     className="placeholder:text-gray-400 placeholder:text-[10px] text-xs border border-color4 rounded-md py-3 px-4 mt-3 w-full focus:outline-color1"
                 />
 
@@ -256,7 +373,7 @@ const CustomerLogScreen = () => {
                 <ButtonComponent label="Update" onPress={() => handleUpdate()} className="mt-5" />
 
                 {/* Back to activities button*/}
-                <ButtonComponent var2 label="Back to Activities" onPress={() =>router.push("/home")} className="mt-5" />
+                <ButtonComponent var2 label="Back to Activities" onPress={() => router.push("/home")} className="mt-5" />
             </View>
         </ScrollView>
     );

@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import FacebookIcon from "@/components/svg/facebookIcon";
 import InstagramIcon from "@/components/svg/instagramIcon";
 import YouTubeIcon from "@/components/svg/youtubeIcon";
@@ -11,12 +11,30 @@ import ButtonComponent from "@/components/button";
 import BackArrowIcon from "@/components/svg/backArrow";
 import { router } from "expo-router";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store/store";
 import EditIcon from "@/components/svg/editIcon";
+import SuccessAnimation from '@/components/successAnimation';
+import { setCustomerUpdateSuccess } from '@/store/uiSlice';
 
 const ProfileScreen = () => {
     const consultant = useSelector((state: RootState) => state.consultant.data);
+    const customerUpdateSuccess = useSelector((state: RootState) => state.ui.customerUpdateSuccess);
+      const [showSuccess, setShowSuccess] = useState(false);
+        const dispatch = useDispatch();
+
+
+        useEffect(() => {
+            if (customerUpdateSuccess) {
+                setShowSuccess(true);
+            }
+        }, [customerUpdateSuccess]);
+
+      const handleAnimationComplete = () => {
+            setShowSuccess(false);
+           dispatch(setCustomerUpdateSuccess(false));
+        }
+
 
     // Get initials from name
     const getInitials = (name: string | undefined): string => {
@@ -29,6 +47,8 @@ const ProfileScreen = () => {
     };
 
     return (
+        <>
+          {showSuccess && <SuccessAnimation message='Profile Updated' onAnimationComplete={handleAnimationComplete} />}
         <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
             <View>
                 {/* Header */}
@@ -116,6 +136,7 @@ const ProfileScreen = () => {
                 <ButtonComponent label="Share Profile" var2 />
             </View>
         </View>
+         </>
     );
 };
 

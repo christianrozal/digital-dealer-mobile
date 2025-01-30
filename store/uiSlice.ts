@@ -16,6 +16,8 @@ interface UIState {
   customersSortBy: "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest" | null;
   customersFromDate: dayjs.Dayjs | null;
   customersToDate: dayjs.Dayjs | null;
+    
+  customerUpdateSuccess: boolean;
 }
 
 const initialState: UIState = {
@@ -32,6 +34,8 @@ const initialState: UIState = {
   customersSortBy: null,
   customersFromDate: null,
   customersToDate: null,
+    
+  customerUpdateSuccess: false,
 };
 
 const uiSlice = createSlice({
@@ -143,6 +147,9 @@ const uiSlice = createSlice({
         state.customersFromDate = null;
         state.customersToDate = null;
       },
+      setCustomerUpdateSuccess: (state, action: PayloadAction<boolean>) => {
+        state.customerUpdateSuccess = action.payload;
+      },
   },
 });
 
@@ -172,6 +179,7 @@ export const {
     setCustomersFromDate,
     setCustomersToDate,
     resetCustomersDateRange,
+    setCustomerUpdateSuccess,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;
