@@ -1,7 +1,12 @@
 import React from "react";
 import Svg, { G, Path, ClipPath, Defs, Rect } from "react-native-svg";
 
-const AlexiumLogo2 = ({ width, height }) => (
+interface AlexiumLogo2Props {
+  width: number;
+  height: number;
+}
+
+const AlexiumLogo2: React.FC<AlexiumLogo2Props> = ({ width, height }) => (
   <Svg width={width} height={height} viewBox="0 0 64 14" fill="none">
     <G clipPath="url(#clip0_338_1649)">
       <Path

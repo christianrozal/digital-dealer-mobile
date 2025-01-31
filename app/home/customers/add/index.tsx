@@ -60,28 +60,37 @@ const AddCustomerScreen = () => {
         setLoading(true);
         try {
             // Upload new image
-           let imageId;
-           let previewUrlString;
-            if (profileImage) {
-                 const fileName = profileImage.split('/').pop();
-                  const fileType = 'image/jpeg';
-                  const response = await fetch(profileImage);
-                  const blob = await response.blob();
-                   const file = new File([blob], fileName || 'profile.jpg', { type: fileType });
-                    const uploadResponse = await storage.createFile(
-                      BUCKET_ID,
-                      ID.unique(),
-                    file
-                   );
-                // Get preview URL
-                   previewUrlString = storage.getFilePreview(
-                       BUCKET_ID,
-                       uploadResponse.$id,
-                       500,
-                       500
-                   ).toString();
-                     imageId = uploadResponse.$id
-            }
+            let imageId;
+ let previewUrlString;
+
+ if (profileImage) {
+    const fileName = profileImage.split('/').pop();
+    const fileType = 'image/jpeg';
+    const response = await fetch(profileImage);
+    const blob = await response.blob();
+
+    // Create the file object that Appwrite expects
+    const file = {
+    name: fileName || 'profile.jpg',
+        type: fileType,
+        size: blob.size,
+        uri: profileImage
+        }
+
+        const uploadResponse = await storage.createFile(
+            BUCKET_ID,
+            ID.unique(),
+            file
+        );
+        // Get preview URL
+        previewUrlString = storage.getFilePreview(
+            BUCKET_ID,
+            uploadResponse.$id,
+            500,
+            500
+        ).toString();
+          imageId = uploadResponse.$id
+    }   
 
             // Create a new customer document
             const newCustomerDocument = await databases.createDocument(

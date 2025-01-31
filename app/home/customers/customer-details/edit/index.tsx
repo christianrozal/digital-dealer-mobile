@@ -25,6 +25,22 @@ const BUCKET_ID = '679a6a24003b707de5c0';
 const DATABASE_ID = "67871d61002bf7e6bc9e";
 const COLLECTION_ID = "678724210037c2b3b179";
 
+
+interface Customer {
+   $id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+   'profile-icon'?: string;
+    profileImageId?: string;
+    [key: string]: any;
+}
+
+interface Scan {
+    customers?: Customer;
+      [key: string]: any;
+}
+
 const EditCustomerScreen = () => {
     const customerId = useSelector((state: RootState) => state.customer.selectedCustomer?.$id);
      const { data: allConsultantData} = useSelector(
@@ -42,9 +58,9 @@ const EditCustomerScreen = () => {
 
     useEffect(() => {
          if (allConsultantData?.scans && customerId) {
-           const customerFromConsultant = allConsultantData.scans.find(scan => scan.customers?.$id === customerId)?.customers;
+           const customerFromConsultant = allConsultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.customers;
            if (customerFromConsultant){
-           
+            
               setCustomer(customerFromConsultant)
                setFormData({
                   name: customerFromConsultant?.name || '',
@@ -78,25 +94,33 @@ const EditCustomerScreen = () => {
               let previewUrlString = customer['profile-icon'];
 
                 if (profileImage) {
-                  const fileName = profileImage.split('/').pop();
+                    const fileName = profileImage.split('/').pop();
                     const fileType = 'image/jpeg';
-                  const response = await fetch(profileImage);
-                  const blob = await response.blob();
-                   const file = new File([blob], fileName || 'profile.jpg', { type: fileType });
+                    const response = await fetch(profileImage);
+                    const blob = await response.blob();
+
+                    // Create the file object that Appwrite expects
+                     const file = {
+                        name: fileName || 'profile.jpg',
+                        type: fileType,
+                        size: blob.size,
+                        uri: profileImage
+                    }
+
                     const uploadResponse = await storage.createFile(
-                      BUCKET_ID,
-                      ID.unique(),
-                    file
-                   );
-                 // Get preview URL
-                   previewUrlString = storage.getFilePreview(
-                       BUCKET_ID,
-                       uploadResponse.$id,
-                       500,
-                       500
-                   ).toString();
-                     imageId = uploadResponse.$id
-                 }
+                        BUCKET_ID,
+                        ID.unique(),
+                        file
+                    );
+                    // Get preview URL
+                    previewUrlString = storage.getFilePreview(
+                        BUCKET_ID,
+                        uploadResponse.$id,
+                        500,
+                        500
+                    ).toString();
+                    imageId = uploadResponse.$id
+                }
                
              // Update the customer record
             const updatedDocument = await databases.updateDocument(
@@ -114,7 +138,7 @@ const EditCustomerScreen = () => {
 
 
              // Find the scan with the current customer id to update it
-            const updatedScans = allConsultantData?.scans?.map((scan) => {
+            const updatedScans = allConsultantData?.scans?.map((scan:Scan) => {
                  if (scan.customers?.$id === customer.$id) {
                   return {
                      ...scan,

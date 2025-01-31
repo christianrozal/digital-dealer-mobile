@@ -1,4 +1,3 @@
-import ButtonComponent from "@/components/button";
 import CalendarIcon from "@/components/svg/calendar";
 import EmailIcon from "@/components/svg/emailIcon";
 import FilterIcon from "@/components/svg/filterIcon";
@@ -109,8 +108,13 @@ const HomeScreen = () => {
 
         dispatch(setConsultant(response.documents[0]));
       } catch (error) {
-        console.log("Session Error:", error);
-        dispatch(setError(error.message));
+        if (error instanceof Error) {
+            dispatch(setError(error.message));
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+            dispatch(setError(String(error.message)));
+        } else {
+             dispatch(setError(String(error)));
+        }
         try {
           await account.deleteSession("current");
         } finally {
@@ -158,7 +162,7 @@ const HomeScreen = () => {
   };
 
     const filteredScans = consultantData?.scans
-        ?.filter((scan) => {
+        ?.filter((scan: any) => {
         const scanDate = dayjs(scan.$createdAt);
         const hasDateFilter = activitiesFromDate?.isValid() || activitiesToDate?.isValid();
 
@@ -202,7 +206,7 @@ const HomeScreen = () => {
             return true;
         })
         // Sorting the filtered scans
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
              if (!activitiesSortBy) {
                 const safeDate = (date: string | null | undefined): number => {
                     return date ? new Date(date).getTime() : 0;
@@ -334,7 +338,7 @@ const HomeScreen = () => {
           <Text className="text-gray-500">No scans found for today</Text>
         </View>
       ) : (
-        filteredScans?.map((scan, index) => (
+        filteredScans?.map((scan: any, index: number) => (
           <TouchableOpacity key={index} className="mt-7" onPress={() => {
              // Construct a new customer object with the combined data
               const customerForActivity = {

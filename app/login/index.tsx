@@ -19,6 +19,9 @@ const client = new Client()
 
 const account = new Account(client);
 
+interface AppwriteError extends Error {
+    code?: number
+}
 const LoginScreen = () => {
   const [checked, setChecked] = useState(false);
   const [email, setEmail] = useState("");
@@ -37,7 +40,7 @@ const LoginScreen = () => {
           router.replace("/home");
         }
       } catch (error) {
-        console.log("No existing session:", error.message);
+         console.log("No existing session:", (error as AppwriteError).message);
       } finally {
         setCheckingSession(false);
       }
@@ -83,12 +86,12 @@ const LoginScreen = () => {
       router.replace("/home");
     } catch (error) {
       console.error("Login Error:", error);
-      if (error.code === 409) {
+      if ((error as AppwriteError).code === 409) {
         // Session conflict error
         router.replace("/home");
         return;
       }
-      alert(error.message || "Login failed. Please check your credentials.");
+      alert((error as AppwriteError).message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -178,12 +181,14 @@ const LoginScreen = () => {
       )}
 
       {/* Login Button */}
-      <ButtonComponent
-        label="Login"
-        onPress={handleLogin}
-        disabled={loading}
-        loading={loading}
-      />
+      <View className="w-full mt-5">
+        <ButtonComponent
+          label="Login"
+          onPress={handleLogin}
+          disabled={loading}
+          loading={loading}
+        />
+      </View>
 
       {/* Forgot Password */}
       <TouchableOpacity
@@ -199,11 +204,13 @@ const LoginScreen = () => {
       <Text className="my-6 text-color2">or</Text>
 
       {/* Request Access Button */}
-      <ButtonComponent
-        label="Request Access"
-        var2
-        onPress={() => router.push("/login/request-access")}
-      />
+      <View className="w-full">
+        <ButtonComponent
+          label="Request Access"
+          var2
+          onPress={() => router.push("/login/request-access")}
+        />
+      </View>
     </View>
   );
 };

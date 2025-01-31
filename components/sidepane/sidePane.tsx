@@ -4,7 +4,8 @@ import {
     Dimensions,
     TouchableWithoutFeedback,
     TouchableOpacity,
-    Image
+    Image,
+    Linking
 } from "react-native";
 import Animated, {
     useAnimatedStyle,
@@ -15,14 +16,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import React, {useEffect, useState} from "react";
-import BackArrowIcon from "../svg/backArrow";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/store";
 import { resetScreen } from "@/store/sidePaneSlice";
 import EmailIcon from "../svg/emailIcon";
 import PhoneIcon from "../svg/phoneIcon";
-import { Link, router } from "expo-router";
-import { QRCodeSVG } from "qrcode.react";
+import { router } from "expo-router";
+import QRCode from 'react-native-qrcode-svg';
 import LogoutIcon from "../svg/logoutIcon";
 import { Account, Client } from "react-native-appwrite";
 import ProfileIcon from "../svg/profileIcon";
@@ -193,15 +193,14 @@ const SidePaneComponent = ({
                             <View className="mt-16">
                                 <View className="bg-color3 rounded-md" style={{ padding: 20 }}>
                                     {qrData && (
-                                        <Link href={qrData} target="_blank">
-                                            <QRCodeSVG
-                                                value={qrData}
-                                                className="mx-auto"
-                                                style={{ width: 200, height: 200 }}
-                                                bgColor="#F4F8FC"
-                                                fgColor="#3D12FA"
-                                            />
-                                        </Link>
+                                        <TouchableOpacity onPress={() => Linking.openURL(qrData)}>
+                                        <QRCode
+                                            value={qrData}
+                                            size={200}
+                                            backgroundColor="#F4F8FC"
+                                            color="#3D12FA"
+                                        />
+                                      </TouchableOpacity>
                                     )}
                                     {!qrData && (
                                         <Text className="text-center">Loading QR Code</Text>

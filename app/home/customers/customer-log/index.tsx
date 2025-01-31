@@ -11,8 +11,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ButtonComponent from "@/components/button";
 import { setSelectedCustomer } from "@/store/customerSlice";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { Client, Databases } from "react-native-appwrite";
+import { Client, Databases, ID } from "react-native-appwrite";
 
 
 const client = new Client()
@@ -39,8 +38,8 @@ const CustomerLogScreen = () => {
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const scrollViewRef = useRef<ScrollView>(null);
     const dispatch = useDispatch();
-    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    // const [isDatePickerVisible, setDatePickerVisibility] = useState(false); // Removed
+    // const [selectedDate, setSelectedDate] = useState<Date | null>(null); // Removed
 
 
     useFocusEffect(
@@ -54,7 +53,7 @@ const CustomerLogScreen = () => {
         if (selectedCustomer) {
             setValue(selectedCustomer?.interestStatus || null);
             setInterestedIn(selectedCustomer?.interestedIn ? selectedCustomer.interestedIn.split(',') : []);
-            setSelectedDate(selectedCustomer.lastScanned ? dayjs(selectedCustomer.lastScanned).toDate() : null);
+            // setSelectedDate(selectedCustomer.lastScanned ? dayjs(selectedCustomer.lastScanned).toDate() : null); // Removed
         }
     }, [selectedCustomer]);
 
@@ -72,19 +71,6 @@ const CustomerLogScreen = () => {
         }
         return dayjs(date).format("D MMM YYYY h:mm A");
     };
-
-      const showDatePicker = () => {
-        setDatePickerVisibility(true);
-      };
-
-      const hideDatePicker = () => {
-        setDatePickerVisibility(false);
-      };
-
-      const handleConfirm = (date: Date) => {
-        setSelectedDate(date);
-        hideDatePicker();
-      };
 
 
     const handleCheckboxChange = (interestType: "Buying" | "Selling" | "Financing" | "Purchased") => {
@@ -115,7 +101,7 @@ const CustomerLogScreen = () => {
             ...selectedCustomer,
             interestStatus: value,
             interestedIn: interestedIn.join(','),
-            lastScanned: selectedDate ? dayjs(selectedDate).toISOString() : null
+            // lastScanned: selectedDate ? dayjs(selectedDate).toISOString() : null // Removed
         };
         dispatch(setSelectedCustomer(updatedCustomer));
 
@@ -187,7 +173,7 @@ const CustomerLogScreen = () => {
 
     const renderProfileIcon = () => {
         const profileIconUrl = selectedCustomer?.['profile-icon'];
-      
+
         if (profileIconUrl && profileIconUrl !== 'black') { // Use the URL if it exists and is not black
             return (
                 <Image
@@ -328,21 +314,21 @@ const CustomerLogScreen = () => {
                             padding: 10,
                         }}
                         className="mt-3"
-                         onPress={showDatePicker}
+                        // onPress={showDatePicker} // Removed onPress
                     >
                         <View className="flex-row justify-between items-center">
                             <Text className="text-xs">
-                            {formatDate(selectedDate)}
+                            No scan data
                             </Text>
                             <Calendar2Icon width={16} height={16} />
                         </View>
                     </TouchableOpacity>
-                      <DateTimePickerModal
+                      {/* <DateTimePickerModal // Removed
                            isVisible={isDatePickerVisible}
                             mode="date"
                             onConfirm={handleConfirm}
                             onCancel={hideDatePicker}
-                        />
+                        /> */}
                 </View>
 
                 <View className="mt-10 flex-row gap-5">

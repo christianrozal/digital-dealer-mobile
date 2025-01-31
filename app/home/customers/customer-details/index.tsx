@@ -15,6 +15,23 @@ import EditIcon from '@/components/svg/editIcon';
 import { setCustomerUpdateSuccess } from '@/store/uiSlice';
 import SuccessAnimation from '@/components/successAnimation'; // Assume this exists
 
+interface Customer {
+   $id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    'profile-icon'?: string;
+    profileImageId?: string;
+    [key: string]: any;
+}
+
+interface Scan {
+    customers?: Customer;
+    $createdAt?: string;
+    interest_status?: string;
+     interested_in?: string;
+      [key: string]: any;
+}
 
 const SelectedCustomerScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
@@ -41,14 +58,14 @@ const SelectedCustomerScreen = () => {
 
     useEffect(() => {
          if (consultantData?.scans && customerId) {
-           const customerFromConsultant = consultantData.scans.find(scan => scan.customers?.$id === customerId)?.customers;
+           const customerFromConsultant = consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.customers;
            if (customerFromConsultant){
              const updatedCustomer = {
                 ...customerFromConsultant,
-                lastScanned: consultantData.scans.find(scan => scan.customers?.$id === customerId)?.$createdAt,
-                scanCount: consultantData.scans.filter(scan => scan.customers?.$id === customerId).length,
-                interestStatus: consultantData.scans.find(scan => scan.customers?.$id === customerId)?.interest_status,
-                interestedIn: consultantData.scans.find(scan => scan.customers?.$id === customerId)?.interested_in,
+                lastScanned: consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.$createdAt,
+                scanCount: consultantData.scans.filter((scan: Scan) => scan.customers?.$id === customerId).length,
+                interestStatus: consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.interest_status,
+                interestedIn: consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.interested_in,
                }
                 setSelectedCustomer(updatedCustomer)
            }

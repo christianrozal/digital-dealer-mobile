@@ -11,6 +11,14 @@ import BackArrowIcon from "@/components/svg/backArrow";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ChevronDownIcon from "@/components/svg/chevronDown";
 
+// Define a specific interface for the scan object
+interface Scan {
+    consultants?: {
+        name?: string;
+    } | null;
+  [key: string]: any; // Allows other properties not explicitly declared
+}
+
 const CustomerAssignmentScreen = () => {
   const loggedInConsultantName = useSelector(
     (state: RootState) => state.user.name
@@ -77,7 +85,7 @@ const CustomerAssignmentScreen = () => {
     if (customer?.scans && customer.scans.length > 0) {
       const priorConsultantNames = new Set<string>(); // Use Set to avoid duplicates
 
-      customer.scans.forEach((scan) => {
+      customer.scans.forEach((scan: Scan) => {
         const consultantName = scan.consultants?.name;
         if (consultantName && consultantName !== loggedInConsultantName) { // Exclude current consultant
           priorConsultantNames.add(consultantName);

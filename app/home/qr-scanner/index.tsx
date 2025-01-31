@@ -21,11 +21,31 @@ const DATABASE_ID = "67871d61002bf7e6bc9e";
 const SCANS_COLLECTION_ID = "67960db00004d6153713";
 const CUSTOMERS_COLLECTION_ID = "678724210037c2b3b179"; // Add Customers collection ID
 
+interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+    position?: string;
+  [key: string]: any;
+}
+
+
 const QrScannerScreen = () => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
   const dispatch = useDispatch(); // Initialize dispatch
   const consultant = useSelector((state: any) => state.consultant.data);
+
+    const excludeSystemProperties = (obj: any) => {
+        const result:any = {}
+        for (const key in obj) {
+            if (!key.startsWith('$')) {
+                result[key] = obj[key];
+            }
+        }
+        return result;
+    }
 
   useEffect(() => {
     const getCameraPermissions = async () => {
@@ -56,9 +76,16 @@ const QrScannerScreen = () => {
         throw new Error("Customer not found in database");
       }
 
+       // Map Appwrite Document to Customer object
+      const customer: Customer = {
+        id: customerResponse.$id,
+        ...excludeSystemProperties(customerResponse)
+      };
+
+
       // Dispatch customer data to Redux store
-      dispatch(setSelectedCustomer(customerResponse));
-      console.log("Customer data added to store:", customerResponse); // ADDED CONSOLE LOG
+      dispatch(setSelectedCustomer(customer));
+      console.log("Customer data added to store:", customer); // ADDED CONSOLE LOG
 
       // Create new scan document
       const scanDocument = await databases.createDocument(

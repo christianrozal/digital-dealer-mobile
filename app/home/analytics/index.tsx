@@ -115,7 +115,7 @@ const AnalyticsScreen = () => {
               <View className="w-3 h-3 bg-[#8E72FF] rounded-full"/><Text className="text-xs text-gray-500">Hot <Text className="font-bold text-gray-600">19.2K</Text></Text>
             </View>
             <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#A0ABFF] rounded-full"/><Text className="text-xs text-gray-500">Purchased <Text className="font-bold text-gray-600">53K</Text></Text>
+              <View className="w-3 h-3 bg-[#A0ABFF] rounded-full"/><Text className="text-xs text-gray-500">Bought <Text className="font-bold text-gray-600">53K</Text></Text>
             </View>
           </View>
         </View>

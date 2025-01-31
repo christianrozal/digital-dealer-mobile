@@ -112,33 +112,36 @@ const EditProfileScreen = () => {
                 const uri = result.assets[0].uri;
                 const fileName = uri.split('/').pop();
                 const fileType = result.assets[0].type || 'image/jpeg';
-
-                // Convert image to blob
-                const response = await fetch(uri);
-                const blob = await response.blob();
-
+                const fileSize = result.assets[0].fileSize || 0;
+            
+                // Create the file object that Appwrite expects
+                const file = {
+                    name: fileName || 'profile.jpg',
+                    type: fileType,
+                    size: fileSize,
+                    uri: uri
+                }
+            
                 // Delete previous image if exists - with error handling
                 if (consultant?.profileImageId) {
-                    try {
-                        await storage.deleteFile(BUCKET_ID, consultant.profileImageId);
-                    } catch (deleteError) {
-                        console.log('Previous image not found, proceeding anyway:', deleteError);
-                        // Optional: Update state to remove missing image reference
-                        dispatch(setConsultant({
-                            ...consultant,
-                            profileImageId: undefined
-                        }));
-                    }
+                try {
+                  await storage.deleteFile(BUCKET_ID, consultant.profileImageId);
+                } catch (deleteError) {
+                    console.log('Previous image not found, proceeding anyway:', deleteError);
+                    // Optional: Update state to remove missing image reference
+                    dispatch(setConsultant({
+                        ...consultant,
+                        profileImageId: undefined
+                    }));
                 }
-
+                }
+            
                 // Upload new image
-                const file = new File([blob], fileName || 'profile.jpg', { type: fileType });
                 const uploadResponse = await storage.createFile(
                     BUCKET_ID,
                     ID.unique(),
                     file
                 );
-
                 // Get preview URL
                 const previewUrl = storage.getFilePreview(
                     BUCKET_ID,
@@ -146,32 +149,29 @@ const EditProfileScreen = () => {
                     500,
                     500
                 );
-
                 setProfileImage(previewUrl.toString());
-
+            
+            
                 // Update the consultant document with both URL and image ID
-                await databases.updateDocument(
-                    DATABASE_ID,
-                    COLLECTION_ID,
-                    consultant.$id,
-                    {
+                    await databases.updateDocument(
+                        DATABASE_ID,
+                        COLLECTION_ID,
+                        consultant.$id,
+                        {
+                            'profile-icon': previewUrl.toString(),
+                            'profileImageId': uploadResponse.$id
+                        }
+                    );
+            
+            
+                     // Dispatch the updated consultant data
+                    dispatch(setConsultant({
+                        ...consultant,
                         'profile-icon': previewUrl.toString(),
-                        'profileImageId': uploadResponse.$id
-                    }
-                );
-
-                // Dispatch the updated consultant data
-                dispatch(setConsultant({
-                    ...consultant,
-                    'profile-icon': previewUrl.toString(),
-                    profileImageId: uploadResponse.$id
-                }));
-
-
-                  dispatch(setCustomerUpdateSuccess(true));
-                // Navigate to profile screen
-                   router.push("/home/profile");
-
+                        profileImageId: uploadResponse.$id
+                    }));
+                dispatch(setCustomerUpdateSuccess(true));
+                router.push("/home/profile");
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to upload image');
