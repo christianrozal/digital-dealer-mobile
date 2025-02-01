@@ -37,7 +37,7 @@ const LoginScreen = () => {
       try {
         const session = await account.getSession("current");
         if (session) {
-          router.replace("/home");
+          router.replace("/dealerships");
         }
       } catch (error) {
          console.log("No existing session:", (error as AppwriteError).message);
@@ -82,13 +82,44 @@ const LoginScreen = () => {
 
     setLoading(true);
     try {
+      // First create the session
       const session = await account.createEmailPasswordSession(email, password);
-      router.replace("/home");
+      
+      // Then get the user's account info to check labels
+      const accountInfo = await account.get();
+      
+      // Check if user has any of the allowed roles
+      const allowedRoles = ['consultant', 'manager', 'admin'];
+      const hasAllowedRole = accountInfo.labels?.some(label => allowedRoles.includes(label));
+      
+      if (!hasAllowedRole) {
+        // If user doesn't have any allowed role, delete the session and show error
+        await account.deleteSession(session.$id);
+        alert('Access denied. You do not have permission to access this application.');
+        return;
+      }
+
+      // If we get here, user has an allowed role
+      router.replace("/dealerships");
     } catch (error) {
       console.error("Login Error:", error);
       if ((error as AppwriteError).code === 409) {
-        // Session conflict error
-        router.replace("/home");
+        // Session conflict error - still need to verify if user has allowed role
+        try {
+          const accountInfo = await account.get();
+          const allowedRoles = ['consultant', 'manager', 'admin'];
+          const hasAllowedRole = accountInfo.labels?.some(label => allowedRoles.includes(label));
+          
+          if (!hasAllowedRole) {
+            alert('Access denied. You do not have permission to access this application.');
+            await account.deleteSession('current');
+            return;
+          }
+          router.replace("/dealerships");
+        } catch (innerError) {
+          console.error("Verification Error:", innerError);
+          alert("An error occurred while verifying your access.");
+        }
         return;
       }
       alert((error as AppwriteError).message || "Login failed. Please check your credentials.");

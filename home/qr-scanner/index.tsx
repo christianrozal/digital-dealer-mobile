@@ -7,8 +7,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { setConsultant } from "@/store/consultantSlice";
 import * as appwrite from "react-native-appwrite";
 import CloseIcon from "@/components/svg/closeIcon";
-import { setSelectedCustomer } from "@/store/customerSlice"; // Import setSelectedCustomer
-import { setCurrentScan } from "@/store/currentSlice"; // Import setCurrentScan action
+import { setSelectedCustomer } from "@/lib/store/customerSlice"; // Import setSelectedCustomer
+import { setCurrentScan } from "@/lib/store/currentSlice"; // Import setCurrentScan action
 
 // Appwrite client setup
 const client = new appwrite.Client();

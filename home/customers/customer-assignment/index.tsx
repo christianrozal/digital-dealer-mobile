@@ -6,7 +6,7 @@ import ButtonComponent from "@/components/button";
 import { useSelector } from "react-redux";
 import { Avatar } from "react-native-paper";
 import * as appwrite from "react-native-appwrite";
-import { RootState } from "@/store/store";
+import { RootState } from "@/lib/store/store";
 import BackArrowIcon from "@/components/svg/backArrow";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ChevronDownIcon from "@/components/svg/chevronDown";

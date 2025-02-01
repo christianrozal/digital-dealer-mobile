@@ -5,7 +5,7 @@ import AlexiumLogo2 from '@/components/svg/alexiumLogo2';
 import { router } from 'expo-router';
 import ButtonComponent from '@/components/button';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
+import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
 import { Client, Storage, ID, Databases } from 'react-native-appwrite';
 import * as ImagePicker from 'react-native-image-picker';
@@ -193,7 +193,7 @@ const AddCustomerScreen = () => {
                 </View>
           </Animated.View>
          )}
-         <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
+         <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
             <View>
                 {/* Header */}
                 <View className="flex-row w-full justify-between items-center">
@@ -252,7 +252,7 @@ const AddCustomerScreen = () => {
                     </View>
                 </View>
             </View>
-             <View>
+             <View className="px-4">
                 <ButtonComponent
                     label={loading ? "Creating..." : "Create New Customer"}
                     onPress={handleCreateCustomer}

@@ -12,10 +12,10 @@ import BackArrowIcon from "@/components/svg/backArrow";
 import { router } from "expo-router";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "@/store/store";
+import { RootState } from "@/lib/store/store";
 import EditIcon from "@/components/svg/editIcon";
 import SuccessAnimation from '@/components/successAnimation';
-import { setCustomerUpdateSuccess } from '@/store/uiSlice';
+import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 
 const ProfileScreen = () => {
     const consultant = useSelector((state: RootState) => state.consultant.data);

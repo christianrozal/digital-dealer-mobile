@@ -6,7 +6,7 @@ import ButtonComponent from "@/components/button";
 import { useSelector } from "react-redux";
 import { Avatar } from "react-native-paper";
 import * as appwrite from "react-native-appwrite";
-import { RootState } from "@/store/store";
+import { RootState } from "@/lib/store/store";
 
 // Initialize Appwrite client (moved outside the component for better performance)
 const client = new appwrite.Client();

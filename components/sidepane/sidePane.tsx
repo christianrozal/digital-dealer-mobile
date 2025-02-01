@@ -17,8 +17,8 @@ import Animated, {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import React, {useEffect, useState} from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "@/store/store";
-import { resetScreen } from "@/store/sidePaneSlice";
+import { AppDispatch, RootState } from "@/lib/store/store";
+import { resetScreen } from "@/lib/store/sidePaneSlice";
 import EmailIcon from "../svg/emailIcon";
 import PhoneIcon from "../svg/phoneIcon";
 import { router } from "expo-router";

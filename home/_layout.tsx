@@ -8,7 +8,7 @@ import {
 import React from "react";
 import { router, Slot, usePathname } from "expo-router";
 import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { RootState } from "@/lib/store/store";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import AnalyticsIcon from "@/components/svg/analyticsIcon";
 import NotificationsIcon from "@/components/svg/notificationsIcon";
@@ -77,18 +77,26 @@ const HomeLayout = () => {
 
     return (
         <GestureDetector gesture={openGesture}>
-            <View className="flex-1">
+            <View style={{ flex: 1 }}>
             {shouldRenderLayout ? (
                 <>
                 <View
-                    className={`absolute top-0 left-0 z-50  w-screen h-screen bg-black backdrop-blur-lg pointer-events-none transition-opacity duration-300 ${
-                        isActivitiesFilterVisible || isCustomersFilterVisible ? "opacity-10" : "opacity-0"
-                    }`}
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        zIndex: 50,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'black',
+                        opacity: isActivitiesFilterVisible || isCustomersFilterVisible ? 0.1 : 0,
+                        pointerEvents: 'none',
+                    }}
                 />
                 {/* Header */}
-                <View className="flex-row justify-between items-center py-5 px-5 z-20 bg-white fixed top-0 w-full">
+                <View className="absolute top-0 left-0 right-0 h-[60px] flex-row justify-between items-center px-5 z-20 bg-white">
                     {/* User Icon */}
-                     <TouchableOpacity
+                    <TouchableOpacity
                         onPress={() => {
                             if (translateX.value === -SCREEN_WIDTH * 0.95) {
                                 translateX.value = withSpring(0);
@@ -96,8 +104,14 @@ const HomeLayout = () => {
                         }}
                     >
                         <View
-                            className="bg-color1 rounded-full flex items-center justify-center"
-                            style={{ width: 32, height: 32 }}
+                            style={{
+                                backgroundColor: '#3D12FA', // color1
+                                borderRadius: 9999,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 32,
+                                height: 32
+                            }}
                         >
                             {consultant?.['profile-icon'] ? (
                                 <Image
@@ -105,7 +119,7 @@ const HomeLayout = () => {
                                     style={{ width: 32, height: 32, borderRadius: 16 }}
                                 />
                             ) : (
-                                <Text className="text-white font-bold text-xs">
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
                                     {getInitials(consultant?.name)}
                                 </Text>
                             )}
@@ -118,7 +132,7 @@ const HomeLayout = () => {
                     </View>
 
                     {/* Header Icons */}
-                    <View className="flex-row gap-2 items-center">
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                         <TouchableOpacity onPress={() => router.push("/home/analytics")}>
                             <AnalyticsIcon
                                 width={20}
@@ -146,43 +160,53 @@ const HomeLayout = () => {
 
 
                    {/* Bottom Navigation */}
-        <View className="absolute bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-100 flex-row justify-center gap-10 items-center py-3">
-          <TouchableOpacity
-            className="flex items-center"
-            onPress={() => router.push("/home")}
-          >
-            <ActivityIcon
-              stroke={pathname === "/home" ? "#3D12FA" : "#BECAD6"}
-            />
-            <Text className="text-[10px] text-gray-500 font-semibold mt-1">
-              Activity
-            </Text>
-          </TouchableOpacity>
+        <View className="absolute bottom-0 left-0 right-0 h-[70px] flex-row justify-center items-center gap-10 bg-white border-t border-gray-100 z-10">
+                    <TouchableOpacity
+            style={{ alignItems: 'center' }}
+                        onPress={() => router.push("/home")}
+                    >
+                        <ActivityIcon
+                            stroke={pathname === "/home" ? "#3D12FA" : "#BECAD6"}
+                        />
+            <Text style={{ 
+                fontSize: 10,
+                color: '#6b7280',
+                fontWeight: '600',
+                marginTop: 4
+            }}>
+                            Activity
+                        </Text>
+                    </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push("/home/qr-scanner")}>
-            <ScannerIcon
-              fgColor={pathname === "/home/qr-scanner" ? "#3D12FA" : "#BECAD6"}
-            />
-          </TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push("/home/qr-scanner")}>
+                        <ScannerIcon
+                            fgColor={pathname === "/home/qr-scanner" ? "#3D12FA" : "#BECAD6"}
+                        />
+                    </TouchableOpacity>
 
-          <TouchableOpacity
-            className="flex items-center"
-            onPress={() => router.push("/home/customers")}
-          >
-            <CustomersIcon
-              stroke={pathname === "/home/customers" ? "#3D12FA" : "#BECAD6"}
-            />
-            <Text className="text-[10px] text-gray-500 font-semibold mt-1">
-              Customers
-            </Text>
-          </TouchableOpacity>
-        </View>
-                   <Slot />
+                    <TouchableOpacity
+            style={{ alignItems: 'center' }}
+                        onPress={() => router.push("/home/customers")}
+                    >
+                        <CustomersIcon
+                            stroke={pathname === "/home/customers" ? "#3D12FA" : "#BECAD6"}
+                        />
+            <Text style={{ 
+                fontSize: 10,
+                color: '#6b7280',
+                fontWeight: '600',
+                marginTop: 4
+            }}>
+                            Customers
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                <Slot />
                 </>
             ) : (
                 <Slot />
             )}
-             </View>
+            </View>
         </GestureDetector>
     );
 };

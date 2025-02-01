@@ -6,12 +6,12 @@ import AlexiumLogo2 from '@/components/svg/alexiumLogo2';
 import { router } from 'expo-router';
 import ButtonComponent from '@/components/button';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '@/store/store';
+import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
 import { Client, Storage, ID, Databases } from 'react-native-appwrite';
 import * as ImagePicker from 'react-native-image-picker';
 import { setConsultant } from '@/store/consultantSlice';
-import { setCustomerUpdateSuccess } from '@/store/uiSlice';
+import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 
 
 // Initialize Appwrite client

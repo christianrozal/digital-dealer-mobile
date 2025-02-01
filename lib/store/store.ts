@@ -1,22 +1,20 @@
 // store.ts
 import { configureStore, current } from '@reduxjs/toolkit';
-import userReducer from './userSlice';
 import sidePaneReducer from './sidePaneSlice';
-import consultantReducer from './consultantSlice';
 import uiReducer from './uiSlice';
 import customerReducer from './customerSlice';
 import rooftopReducer from './rooftopSlice';
 import currentReducer from './currentSlice';
+import userReducer from './userSlice';
 
 const store = configureStore({
   reducer: {
-    user: userReducer,
     sidePane: sidePaneReducer,
-    consultant: consultantReducer,
     ui: uiReducer,
     customer: customerReducer,
     rooftop: rooftopReducer,
     current: currentReducer,
+    user: userReducer,
   },
 });
 

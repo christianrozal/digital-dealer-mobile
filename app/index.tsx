@@ -22,7 +22,13 @@ export default function Index() {
         <ButtonComponent
           label="Home"
           var2
-          onPress={() => router.push("/home")}
+          onPress={() => router.push("/")}
+          className="px-10 mt-10"
+        />
+        <ButtonComponent
+          label="Test"
+          var2
+          onPress={() => router.push("/test")}
           className="px-10 mt-10"
         />
       </View>

@@ -9,7 +9,7 @@ import PhoneIcon from "../svg/phoneIcon";
 import WebsiteIcon from "../svg/websiteIcon";
 import ButtonComponent from "../button";
 import { useDispatch } from "react-redux";
-import { setScreen } from "@/store/sidePaneSlice";
+import { setScreen } from "@/lib/store/sidePaneSlice";
 
 const ProfileScreen = () => {
   const dispatch = useDispatch();

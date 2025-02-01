@@ -23,9 +23,10 @@ const ButtonComponent: FC<ButtonComponentProps> = ({
             onPress={onPress}
             className={`${className} ${
                 var2 ? "bg-color3" : "bg-color1"
-            } py-3 rounded-full flex-1 justify-center items-center`}
+            } py-3 rounded-full justify-center items-center ${
+                disabled ? "opacity-50" : "opacity-100"
+            }`}
             disabled={disabled}
-            style={{opacity: disabled ? 0.5 : 1}}
         >
             {loading ? (
               <View className="flex-row justify-center items-center gap-2">

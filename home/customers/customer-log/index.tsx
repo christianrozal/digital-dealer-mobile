@@ -3,14 +3,14 @@ import { View, Text, TouchableOpacity, TextInput, ScrollView, Image } from "reac
 import { router } from "expo-router";
 import { Checkbox } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { RootState } from "@/lib/store/store";
 import dayjs from "dayjs";
 import BackArrowIcon from "@/components/svg/backArrow";
 import Calendar2Icon from "@/components/svg/calendar2";
 import { useFocusEffect } from "@react-navigation/native";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ButtonComponent from "@/components/button";
-import { setSelectedCustomer } from "@/store/customerSlice";
+import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { Client, Databases, ID } from "react-native-appwrite";
 
 

@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, Modal, ScrollView } from "react-native";
 import React, { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { RootState } from "@/lib/store/store";
 import {
   hideActivitiesFilter,
   toggleActivitiesInterestedIn,
@@ -14,7 +14,7 @@ import {
   setActivitiesFromDate,
   setActivitiesToDate,
   resetActivitiesDateRange,
-} from "@/store/uiSlice";
+} from "@/lib/store/uiSlice";
 import CloseIcon from "./svg/closeIcon";
 import ButtonComponent from "./button";
 import ChevronDownIcon from "./svg/chevronDown";
