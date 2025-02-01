@@ -4,7 +4,7 @@ import { CameraView, Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
-import { setConsultant } from "@/store/consultantSlice";
+import { setConsultant } from "@/lib/store/consultantSlice";
 import * as appwrite from "react-native-appwrite";
 import CloseIcon from "@/components/svg/closeIcon";
 import { setSelectedCustomer } from "@/lib/store/customerSlice"; // Import setSelectedCustomer

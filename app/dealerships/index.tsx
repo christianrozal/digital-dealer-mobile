@@ -25,6 +25,28 @@ interface DealershipLevel3 {
   dealershipLevel2: DealershipLevel2;
 }
 
+interface Scan {
+  $id: string;
+  $createdAt: string;
+  dealershipLevel2?: { $id: string };
+  dealershipLevel3?: { $id: string };
+  customers?: any;
+  interest_status?: string;
+  interested_in?: string;
+  follow_up_date?: string;
+}
+
+interface UserData {
+  $id: string;
+  dealershipLevel1?: {
+    $id: string;
+    name: string;
+  };
+  dealershipLevel2?: DealershipLevel2[];
+  dealershipLevel3?: DealershipLevel3[];
+  scans?: Scan[];  // This is what comes from Appwrite
+}
+
 const DealershipsScreen = () => {
   const [isDealershipDropdownOpen, setIsDealershipDropdownOpen] = useState(false);
   const [isRooftopDropdownOpen, setIsRooftopDropdownOpen] = useState(false);
@@ -33,7 +55,7 @@ const DealershipsScreen = () => {
   const [availableRooftops, setAvailableRooftops] = useState<DealershipLevel3[]>([]);
   
   const dispatch = useDispatch();
-  const userData = useSelector((state: RootState) => state.user.data);
+  const userData = useSelector((state: RootState) => state.user.data) as UserData;
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -47,7 +69,7 @@ const DealershipsScreen = () => {
         );
 
         if (response.documents.length > 0) {
-          const userData = response.documents[0];
+          const userData = response.documents[0] as unknown as UserData;
           dispatch(setUserData(userData));
           console.log('User Data:', userData);
         } else {
@@ -83,12 +105,43 @@ const DealershipsScreen = () => {
       rooftop => rooftop.dealershipLevel2.$id === dealership.$id
     ) || [];
     setAvailableRooftops(rooftops);
+
+    // Update Redux with filtered data
+    if (userData) {
+      // Filter scans for this dealership
+      const dealershipScans = userData.scans?.filter(scan => 
+        scan.dealershipLevel2?.$id === dealership.$id ||
+        rooftops.some(rooftop => scan.dealershipLevel3?.$id === rooftop.$id)
+      ) || [];
+
+      dispatch(setUserData({
+        ...userData,
+        dealershipLevel2: [dealership],
+        dealershipLevel3: rooftops,
+        scans: dealershipScans  // Update scans in Redux
+      }));
+    }
   };
 
   const handleRooftopSelection = (rooftop: DealershipLevel3) => {
     setSelectedRooftop(rooftop);
-    dispatch(setSelectedRooftopData(rooftop));
     setIsRooftopDropdownOpen(false);
+    
+    // Update Redux with filtered data
+    if (userData && selectedDealership) {
+      // Filter scans for this rooftop
+      const rooftopScans = userData.scans?.filter(scan => 
+        scan.dealershipLevel3?.$id === rooftop.$id
+      ) || [];
+
+      dispatch(setUserData({
+        ...userData,
+        dealershipLevel2: [selectedDealership],
+        dealershipLevel3: [rooftop],
+        scans: rooftopScans  // Update scans in Redux
+      }));
+    }
+    dispatch(setSelectedRooftopData(rooftop));
   };
 
   const handleContinue = () => {
@@ -96,10 +149,32 @@ const DealershipsScreen = () => {
     
     // If there are rooftops available, require one to be selected
     if (availableRooftops.length > 0 && !selectedRooftop) return;
+
+    // Filter scans based on selection
+    const filteredScans = selectedRooftop
+      ? userData.scans?.filter(scan => scan.dealershipLevel3?.$id === selectedRooftop.$id)
+      : userData.scans?.filter(scan => 
+          scan.dealershipLevel2?.$id === selectedDealership.$id ||
+          availableRooftops.some(rooftop => scan.dealershipLevel3?.$id === rooftop.$id)
+        ) || [];
+
+    // Update Redux with filtered scans only, keep other data intact
+    dispatch(setUserData({
+      ...userData,
+      scans: filteredScans  // Update scans in Redux
+    }));
     
     dispatch(setCurrentRooftop(selectedRooftop?.$id || selectedDealership.$id));
     dispatch(setCurrentConsultant(userData.$id || null));
-    router.push("/");
+    
+    console.log('Final selected data:', {
+      dealershipLevel1: userData.dealershipLevel1,
+      dealershipLevel2: userData.dealershipLevel2,
+      dealershipLevel3: userData.dealershipLevel3,
+      scans: filteredScans  // Log as scans
+    });
+    
+    router.push("/home");
   };
 
   const level1Name = userData?.dealershipLevel1?.name || "Loading...";

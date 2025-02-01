@@ -6,7 +6,7 @@ import customerReducer from './customerSlice';
 import rooftopReducer from './rooftopSlice';
 import currentReducer from './currentSlice';
 import userReducer from './userSlice';
-
+import consultantReducer from './consultantSlice';
 const store = configureStore({
   reducer: {
     sidePane: sidePaneReducer,
@@ -15,6 +15,7 @@ const store = configureStore({
     rooftop: rooftopReducer,
     current: currentReducer,
     user: userReducer,
+    consultant: consultantReducer,
   },
 });
 

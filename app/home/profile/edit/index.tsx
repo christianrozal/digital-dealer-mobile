@@ -10,7 +10,7 @@ import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
 import { Client, Storage, ID, Databases } from 'react-native-appwrite';
 import * as ImagePicker from 'react-native-image-picker';
-import { setConsultant } from '@/store/consultantSlice';
+import { setConsultant } from '@/lib/store/consultantSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 
 

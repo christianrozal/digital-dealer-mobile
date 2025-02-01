@@ -8,12 +8,31 @@ interface DealershipLevel1 {
 interface DealershipLevel2 {
     $id: string;
     name: string;
+    slug?: string;
 }
 
 interface DealershipLevel3 {
     $id: string;
     name: string;
+    slug?: string;
     dealershipLevel2: DealershipLevel2;
+}
+
+interface Scan {
+    $id: string;
+    $createdAt: string;
+    customers?: {
+        id: string;
+        name?: string;
+        phone?: string;
+        email?: string;
+        profileImage?: string;
+        interestStatus?: string;
+        interestedIn?: string;
+    };
+    interest_status?: string;
+    interested_in?: string;
+    follow_up_date?: string;
 }
 
 interface UserState {
@@ -26,12 +45,15 @@ interface UserState {
         role?: string;
         profileImage?: string;
         profileImageId?: string;
-        dealershipLevel1?: DealershipLevel1;
+        dealershipLevel1?: {
+            $id: string;
+            name: string;
+        };
         dealershipLevel2?: DealershipLevel2[];
         dealershipLevel3?: DealershipLevel3[];
+        scans?: Scan[];
         slug?: string;
         customers?: string[];
-        scans?: string[];
     } | null;
     loading: boolean;
     error: string | null;

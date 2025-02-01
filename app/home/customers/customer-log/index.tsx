@@ -11,6 +11,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ButtonComponent from "@/components/button";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
+import { setUserData } from "@/lib/store/userSlice";
 import { Client, Databases, ID } from "react-native-appwrite";
 
 
@@ -20,31 +21,46 @@ const client = new Client()
 
 const databases = new Databases(client);
 
+interface Scan {
+    $id: string;
+    $createdAt: string;
+    customers?: {
+        id: string;
+        name?: string;
+        phone?: string;
+        email?: string;
+        'profile-icon'?: string;
+        interestStatus?: string;
+        interestedIn?: string;
+    };
+    interest_status?: string;
+    interested_in?: string;
+    follow_up_date?: string;
+}
+
+interface UserData {
+    $id: string;
+    scans?: Scan[];
+}
 
 const CustomerLogScreen = () => {
 
-    const DATABASE_ID = '67871d61002bf7e6bc9e'; // Replace with your database ID
+    const DATABASE_ID = '67871d61002bf7e6bc9e';
     const COMMENTS_COLLECTION_ID = '6799d2430037c51dc502';
 
     const selectedCustomer = useSelector(
         (state: RootState) => state.customer.selectedCustomer
     );
+    const userData = useSelector((state: RootState) => state.user.data);
 
     const [comment, setComment] = useState('');
-
-    const [value, setValue] = useState<string | null>(
-        null
-    );
+    const [value, setValue] = useState<string | null>(null);
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const scrollViewRef = useRef<ScrollView>(null);
     const dispatch = useDispatch();
-    // const [isDatePickerVisible, setDatePickerVisibility] = useState(false); // Removed
-    // const [selectedDate, setSelectedDate] = useState<Date | null>(null); // Removed
-
 
     useFocusEffect(
         useCallback(() => {
-            // Reset scroll position when the screen comes into focus
             scrollViewRef.current?.scrollTo({ y: 0, animated: false });
         }, [])
     );
@@ -53,7 +69,6 @@ const CustomerLogScreen = () => {
         if (selectedCustomer) {
             setValue(selectedCustomer?.interestStatus || null);
             setInterestedIn(selectedCustomer?.interestedIn ? selectedCustomer.interestedIn.split(',') : []);
-            // setSelectedDate(selectedCustomer.lastScanned ? dayjs(selectedCustomer.lastScanned).toDate() : null); // Removed
         }
     }, [selectedCustomer]);
 
@@ -96,32 +111,55 @@ const CustomerLogScreen = () => {
 
 
     const handleUpdate = async () => {
-        // Update customer data in Redux
+        if (!userData || !selectedCustomer) return;
+
+        // Find the scan in userData.scans that matches this customer
+        const updatedScans = userData.scans?.map((scan: Scan) => {
+            if (scan.customers?.id === selectedCustomer.id) {
+                return {
+                    ...scan,
+                    interest_status: value || undefined,
+                    interested_in: interestedIn.join(','),
+                    customers: {
+                        ...scan.customers,
+                        interestStatus: value || undefined,
+                        interestedIn: interestedIn.join(',')
+                    }
+                };
+            }
+            return scan;
+        }) || [];
+
+        // Update the Redux store with new scan data
+        dispatch(setUserData({
+            ...userData,
+            scans: updatedScans
+        }));
+
+        // Update the selected customer in Redux
         const updatedCustomer = {
             ...selectedCustomer,
             interestStatus: value,
-            interestedIn: interestedIn.join(','),
-            // lastScanned: selectedDate ? dayjs(selectedDate).toISOString() : null // Removed
+            interestedIn: interestedIn.join(',')
         };
         dispatch(setSelectedCustomer(updatedCustomer));
 
-        // Submit comment to Appwrite
+        // Submit comment to Appwrite if provided
         if (comment.trim() && selectedCustomer?.id) {
             try {
                 await databases.createDocument(
                     DATABASE_ID,
                     COMMENTS_COLLECTION_ID,
-                    ID.unique(), // Auto-generate ID
+                    ID.unique(),
                     {
                         customerId: selectedCustomer.id,
                         text: comment,
                         timestamp: new Date().toISOString()
                     }
                 );
-                setComment(''); // Clear comment input
+                setComment('');
             } catch (error) {
                 console.error('Error saving comment:', error);
-                // Add error handling (e.g., show toast message)
             }
         }
 

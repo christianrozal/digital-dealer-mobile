@@ -23,7 +23,7 @@ const ButtonComponent: FC<ButtonComponentProps> = ({
             onPress={onPress}
             className={`${className} ${
                 var2 ? "bg-color3" : "bg-color1"
-            } py-3 rounded-full justify-center items-center ${
+            } py-3 rounded-md justify-center items-center ${
                 disabled ? "opacity-50" : "opacity-100"
             }`}
             disabled={disabled}
