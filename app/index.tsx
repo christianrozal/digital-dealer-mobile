@@ -35,12 +35,6 @@ export default function Index() {
           onPress={() => router.push("/")}
           className="px-10 mt-10"
         />
-        <ButtonComponent
-          label="Test"
-          var2
-          onPress={() => router.push("/test")}
-          className="px-10 mt-10"
-        />
 
 <TouchableOpacity className="mt-10" onPress={handleLogout}>
                                     <View className="flex-row gap-1 items-center">

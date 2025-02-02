@@ -63,7 +63,7 @@ const ProfileScreen = () => {
                     </View>
 
                     <View className="px-4">
-                        <TouchableOpacity className="flex-row gap-1 ml-auto bg-white p-2 z-10 mt-5" onPress={() => router.push("/home/profile/edit")}>
+                        <TouchableOpacity className="flex-row gap-1 ml-auto  p-2 z-10 mt-5" onPress={() => router.push("/home/profile/edit")}>
                             <EditIcon /> 
                             <Text className="text-xs text-gray-300">Edit...</Text>
                         </TouchableOpacity>

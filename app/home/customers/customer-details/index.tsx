@@ -119,7 +119,7 @@ const SelectedCustomerScreen = () => {
           </View>
           <View className="px-4">
             <TouchableOpacity 
-              className="flex-row gap-1 ml-auto bg-white p-2 z-10 mt-8"
+              className="flex-row gap-1 ml-auto p-2 z-10 mt-8"
               onPress={() => { router.push("/home/customers/customer-details/edit") }}
             >
               <EditIcon /> <Text className="text-xs text-gray-300">Edit...</Text>

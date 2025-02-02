@@ -45,8 +45,8 @@ const SidePaneComponent = ({
     const [qrData, setQrData] = useState<string | null>(null);
 
     useEffect(() => {
-        if (userData && userData.$id) {
-            const url = `https://digital-dealer.vercel.app/consultant/${userData.$id}`;
+        if (userData && userData.slug) {
+            const url = `https://digital-dealer.vercel.app/consultant/${userData.slug}`;
             setQrData(url);
         }
     }, [userData]);

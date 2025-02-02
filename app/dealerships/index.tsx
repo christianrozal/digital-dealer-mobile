@@ -148,10 +148,9 @@ const DealershipsScreen = () => {
         rooftops.some(rooftop => scan.dealershipLevel3?.$id === rooftop.$id)
       ) || [];
 
+      // Keep all dealerships in userData but update other data
       dispatch(setUserData({
         ...userData,
-        dealershipLevel2: [dealership],
-        dealershipLevel3: rooftops,
         scans: dealershipScans  // Update scans in Redux
       }));
     }
@@ -182,9 +181,7 @@ const DealershipsScreen = () => {
 
       dispatch(setUserData({
         ...userData,
-        dealershipLevel2: [selectedDealership],
-        dealershipLevel3: [rooftop],
-        scans: rooftopScans  // Update scans in Redux
+        scans: rooftopScans
       }));
     }
     dispatch(setSelectedRooftopData(rooftop));
@@ -291,15 +288,11 @@ const DealershipsScreen = () => {
             {userData.dealershipLevel2.map((dealership) => (
               <TouchableOpacity
                 key={dealership.$id}
-                className={`px-5 py-3 ${
-                  selectedDealership?.$id === dealership.$id ? "bg-color3" : "bg-white"
-                }`}
+                className={`px-5 py-3 ${selectedDealership?.$id === dealership.$id ? "bg-color3" : "bg-white"}`}
                 onPress={() => handleDealershipSelection(dealership)}
               >
                 <Text
-                  className={`text-sm ${
-                    selectedDealership?.$id === dealership.$id ? "text-color1" : "text-gray-700"
-                  }`}
+                  className={`text-sm ${selectedDealership?.$id === dealership.$id ? "text-color1" : "text-gray-700"}`}
                 >
                   {dealership.name}
                 </Text>
@@ -345,15 +338,11 @@ const DealershipsScreen = () => {
               {availableRooftops.map((rooftop) => (
                 <TouchableOpacity
                   key={rooftop.$id}
-                  className={`px-5 py-3 ${
-                    selectedRooftop?.$id === rooftop.$id ? "bg-color3" : "bg-white"
-                  }`}
+                  className={`px-5 py-3 ${selectedRooftop?.$id === rooftop.$id ? "bg-color3" : "bg-white"}`}
                   onPress={() => handleRooftopSelection(rooftop)}
                 >
                   <Text
-                    className={`text-sm ${
-                      selectedRooftop?.$id === rooftop.$id ? "text-color1" : "text-gray-700"
-                    }`}
+                    className={`text-sm ${selectedRooftop?.$id === rooftop.$id ? "text-color1" : "text-gray-700"}`}
                   >
                     {rooftop.name}
                   </Text>
@@ -364,7 +353,7 @@ const DealershipsScreen = () => {
         </View>
       )}
 
-      <View className={`mt-10 w-full`}>
+      <View className="mt-10 w-full">
         <ButtonComponent
           label="Continue"
           onPress={handleContinue}

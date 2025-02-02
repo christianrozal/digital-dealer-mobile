@@ -64,7 +64,7 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
     <View className="justify-between h-full gap-5">
       <View>
         {/* Close Header */}
-        <View className="flex-row justify-between items-center mb-6">
+        <View className="flex-row justify-between items-center">
           <Text className="text-xl">Select Date</Text>
           <TouchableOpacity onPress={() => onClose()}>
             <CloseIcon width={24} height={24} />
@@ -72,9 +72,9 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
         </View>
 
         {/* Calendar Header */}
-        <View className="flex-row justify-between items-center mb-8">
+        <View className="flex-row justify-between items-center mb-8 mt-10">
           <View className="flex-row gap-3 items-center">
-            <Text className="text-lg font-bold">
+            <Text className="text-base font-bold">
               {currentMonth.format("MMMM YYYY")}
             </Text>
           </View>

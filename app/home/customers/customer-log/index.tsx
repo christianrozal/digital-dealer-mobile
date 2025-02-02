@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Alert, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { Checkbox } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,6 +13,9 @@ import ButtonComponent from "@/components/button";
 import { setUserData } from "@/lib/store/userSlice";
 import { databases, databaseId, commentsId, scansId, usersId } from "@/lib/appwrite";
 import { Query, ID } from "react-native-appwrite";
+import DotsIcon from "@/components/svg/dotsIcon";
+import DeleteIcon from "@/components/svg/deleteIcon";
+import EditIcon2 from "@/components/svg/editIcon2";
 
 interface User {
   $id: string;
@@ -65,8 +68,12 @@ interface Comment {
   $createdAt: string;
   comment: string;
   customers: string;
-  users: string;
-  user?: User; // For expanded user data
+  users: {
+    name: string;
+    email: string;
+    $id: string;
+    profileImage?: string;
+  };
 }
 
 const CustomerLogScreen = () => {
@@ -86,6 +93,12 @@ const CustomerLogScreen = () => {
     const dispatch = useDispatch();
     const [activeTab, setActiveTab] = useState<'comments' | 'thread'>('comments');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+    const [showOptions, setShowOptions] = useState<string | null>(null);
+    const [editedComment, setEditedComment] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
         console.log('Debug Data:', {
@@ -123,48 +136,78 @@ const CustomerLogScreen = () => {
 
     // Fetch comments when screen loads
     useEffect(() => {
-      const fetchComments = async () => {
-        if (!currentCustomerId) return;
+        const fetchComments = async () => {
+            if (!currentCustomerId) {
+                console.log("No customer ID available for fetching comments");
+                return;
+            }
 
-        try {
-          const response = await databases.listDocuments(
-            databaseId,
-            commentsId,
-            [
-              Query.equal('customers', currentCustomerId),
-              Query.orderDesc('$createdAt')
-            ]
-          );
-
-          // Get user data for each comment
-          const commentsWithUsers = await Promise.all(
-            response.documents.map(async (comment) => {
-              try {
-                const userData = await databases.getDocument(
-                  databaseId,
-                  usersId,
-                  comment.users
+            try {
+                console.log("Fetching comments for customer:", currentCustomerId);
+                
+                const response = await databases.listDocuments(
+                    databaseId,
+                    commentsId,
+                    [
+                        Query.equal('customers', currentCustomerId),
+                        Query.orderDesc('$createdAt')
+                    ]
                 );
-                return {
-                  ...comment,
-                  user: userData
-                };
-              } catch (error) {
-                console.error("Error fetching user data for comment:", error);
-                return comment;
-              }
-            })
-          );
 
-          console.log("Fetched comments with users:", commentsWithUsers);
-          setComments(commentsWithUsers as unknown as Comment[]);
+                console.log("Fetched customer comments:", response.documents);
+                setComments(response.documents as unknown as Comment[]);
+            } catch (error) {
+                console.error("Error fetching comments:", error);
+                Alert.alert("Error", "Failed to fetch comments");
+            }
+        };
+
+        fetchComments();
+    }, [currentCustomerId, userData?.dealershipLevel1]);
+
+    // Add debugging for tab changes
+    useEffect(() => {
+        console.log("Active tab changed to:", activeTab);
+        console.log("Current comments:", comments);
+    }, [activeTab, comments]);
+
+    const refreshComments = async () => {
+        if (!currentCustomerId || isRefreshing) return;
+        
+        setIsRefreshing(true);
+        try {
+            console.log("Refreshing comments for customer:", currentCustomerId);
+            
+            const response = await databases.listDocuments(
+                databaseId,
+                commentsId,
+                [
+                    Query.equal('customers', currentCustomerId),
+                    Query.orderDesc('$createdAt')
+                ]
+            );
+
+            console.log("Fetched customer comments:", response.documents);
+            setComments(response.documents as unknown as Comment[]);
         } catch (error) {
-          console.error("Error fetching comments:", error);
+            console.error("Error refreshing comments:", error);
+            Alert.alert("Error", "Failed to refresh comments");
+        } finally {
+            setIsRefreshing(false);
         }
-      };
+    };
 
-      fetchComments();
-    }, [currentCustomerId]);
+    // Refresh comments when switching to thread tab
+    useEffect(() => {
+        if (activeTab === 'thread') {
+            refreshComments();
+        }
+    }, [activeTab]);
+
+    const handleTabChange = (tab: 'comments' | 'thread') => {
+        console.log("Switching to tab:", tab);
+        setActiveTab(tab);
+    };
 
     if (!currentScan || !customerData) {
         return (
@@ -212,12 +255,6 @@ const CustomerLogScreen = () => {
                 return;
             }
 
-            console.log("Updating scan with data:", {
-                scanId: currentScan.$id,
-                interestStatus: value,
-                interestedIn: interestedIn.join(',')
-            });
-
             // Update the scan document in Appwrite
             const updatedScan = await databases.updateDocument(
                 databaseId,
@@ -229,30 +266,21 @@ const CustomerLogScreen = () => {
                 }
             );
 
-            console.log("Successfully updated scan:", updatedScan);
-
             // Create comment if there's text
             if (comment.trim() && currentCustomerId && userData?.$id) {
-                const newComment = await databases.createDocument(
+                await databases.createDocument(
                     databaseId,
                     commentsId,
                     ID.unique(),
                     {
                         comment: comment.trim(),
                         customers: currentCustomerId,
-                        users: userData.$id
+                        users: userData.$id,
                     }
                 );
 
-                // Get the user data for the new comment
-                const commentWithUser = {
-                    ...newComment,
-                    user: userData
-                };
-
-                console.log("Created new comment:", commentWithUser);
-                setComments(prevComments => [commentWithUser as unknown as Comment, ...prevComments]);
                 setComment(''); // Clear input
+                await refreshComments(); // Refresh comments after adding new one
             }
 
             // Update the scan in userData.scans
@@ -264,19 +292,17 @@ const CustomerLogScreen = () => {
                     } : scan
                 );
 
-                // Update Redux store with new scan data
                 dispatch(setUserData({
                     ...userData,
                     scans: updatedScans
                 }));
-
-                console.log("Updated user data in Redux");
             }
 
-            // Switch to threads tab instead of redirecting
+            // Switch to threads tab
             setActiveTab('thread');
         } catch (error) {
-            console.error("Error updating scan:", error);
+            console.error("Error updating:", error);
+            Alert.alert("Error", "Failed to update");
         } finally {
             setIsUpdating(false);
         }
@@ -346,6 +372,91 @@ const CustomerLogScreen = () => {
                 >
                     <Text className="text-white font-bold text-sm">
                         {generateInitials(customerData.name)}
+                    </Text>
+                </View>
+            );
+        }
+    };
+
+    const handleCommentOptions = (commentId: string) => {
+        if (showOptions === commentId) {
+            setShowOptions(null);
+        } else {
+            setShowOptions(commentId);
+        }
+    };
+
+    const handleEditComment = (commentId: string, currentComment: string) => {
+        setEditingCommentId(commentId);
+        setEditedComment(currentComment);
+        setShowOptions(null);
+    };
+
+    const handleSaveEdit = async (commentId: string) => {
+        setIsSaving(true);
+        try {
+            await databases.updateDocument(
+                databaseId,
+                commentsId,
+                commentId,
+                {
+                    comment: editedComment
+                }
+            );
+            
+            // Update the comment in local state
+            setComments(prevComments => 
+                prevComments.map(comment => 
+                    comment.$id === commentId 
+                        ? { ...comment, comment: editedComment }
+                        : comment
+                )
+            );
+            setEditingCommentId(null);
+            setEditedComment('');
+        } catch (error) {
+            console.error("Error updating comment:", error);
+            Alert.alert("Error", "Failed to update comment");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteComment = async (commentId: string) => {
+        try {
+            await databases.deleteDocument(
+                databaseId,
+                commentsId,
+                commentId
+            );
+            
+            setComments(prevComments => 
+                prevComments.filter(comment => comment.$id !== commentId)
+            );
+            setShowOptions(null);
+        } catch (error) {
+            console.error("Error deleting comment:", error);
+            Alert.alert("Error", "Failed to delete comment");
+        }
+    };
+
+    // Add this helper function near the top with other functions
+    const renderUserIcon = (name: string | undefined, profileImage?: string) => {
+        if (profileImage && profileImage !== 'black') {
+            return (
+                <Image
+                    source={{ uri: profileImage }}
+                    style={{ width: 28, height: 28, borderRadius: 14 }}
+                />
+            );
+        } else {
+            return (
+                <View
+                    className="bg-color1 rounded-full flex items-center justify-center"
+                    style={{ width: 28, height: 28 }}
+                >
+                    <Text className="text-white text-[10px] font-bold">
+                        {generateInitials(name)}
                     </Text>
                 </View>
             );
@@ -499,7 +610,7 @@ const CustomerLogScreen = () => {
                     <View className="flex-row gap-5">
                         <TouchableOpacity 
                             className={`py-2 px-4 rounded-full ${activeTab === 'comments' ? 'bg-color3' : ''}`}
-                            onPress={() => setActiveTab('comments')}
+                            onPress={() => handleTabChange('comments')}
                         >
                             <Text className={`text-black text-[10px] text-center font-semibold`}>
                                 Comments
@@ -507,7 +618,7 @@ const CustomerLogScreen = () => {
                         </TouchableOpacity>
                         <TouchableOpacity 
                             className={`py-2 px-4 rounded-full ${activeTab === 'thread' ? 'bg-color3' : ''}`}
-                            onPress={() => setActiveTab('thread')}
+                            onPress={() => handleTabChange('thread')}
                         >
                             <Text className={`text-black text-[10px] text-center font-semibold`}>
                                 Thread
@@ -536,12 +647,117 @@ const CustomerLogScreen = () => {
                             ) : (
                                 <View className="gap-2">
                                     {comments.map((comment) => (
-                                        <View key={comment.$id} className="bg-color3 rounded-md p-4">
-                                            <View className="flex-row justify-between items-center">
-                                                <Text className="text-xs font-medium">{comment.user?.name || 'Unknown User'}</Text>
-                                                <Text className="text-xs text-gray-500">{formatDate(new Date(comment.$createdAt))}</Text>
+                                        <View key={comment.$id}>
+                                            <View 
+                                                className={`${showOptions === comment.$id ? 'bg-color3' : 'bg-white'} rounded-md p-4`}
+                                            >
+                                                <View className="flex-row justify-between items-center">
+                                                    <View className="flex-row items-center gap-2">
+                                                        {renderUserIcon(comment.users?.name, comment.users?.profileImage)}
+                                                        <View>
+                                                            <Text className="text-xs font-medium">
+                                                                {comment.users?.name || 'Unknown User'}
+                                                            </Text>
+                                                            <Text className="text-[10px] font-light text-gray-500">
+                                                                {formatDate(new Date(comment.$createdAt))}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                    {/* Only show dots menu for user's own comments */}
+                                                    {comment.users?.$id === userData?.$id && (
+                                                        <TouchableOpacity 
+                                                            onPress={() => handleCommentOptions(comment.$id)}
+                                                        >
+                                                            <DotsIcon 
+                                                                width={16} 
+                                                                height={16} 
+                                                                fill={showOptions === comment.$id ? '#3D12FA' : '#000000'}
+                                                            />
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
+                                                <View>
+                                                    {/* Only allow editing for user's own comments */}
+                                                    {editingCommentId === comment.$id && comment.users?.$id === userData?.$id ? (
+                                                        <View className="mt-2">
+                                                            <TextInput
+                                                                value={editedComment}
+                                                                onChangeText={setEditedComment}
+                                                                className="border border-color4 rounded-md p-2 text-xs"
+                                                                multiline
+                                                                numberOfLines={4}
+                                                            />
+                                                            <View className="flex-row justify-end gap-2 mt-2">
+                                                                <TouchableOpacity 
+                                                                    onPress={() => {
+                                                                        setEditingCommentId(null);
+                                                                        setEditedComment('');
+                                                                    }}
+                                                                    className="px-3 py-1 rounded-md bg-gray-100"
+                                                                >
+                                                                    <Text className="text-xs">Cancel</Text>
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity 
+                                                                    onPress={() => handleSaveEdit(comment.$id)}
+                                                                    className="px-3 py-1 rounded-md bg-color1"
+                                                                    disabled={isSaving}
+                                                                    style={{ minWidth: 50, justifyContent: 'center', alignItems: 'center' }}
+                                                                >
+                                                                    {isSaving ? (
+                                                                        <ActivityIndicator size="small" color="white" />
+                                                                    ) : (
+                                                                        <Text className="text-xs text-white">Save</Text>
+                                                                    )}
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        </View>
+                                                    ) : (
+                                                        <Text className="text-sm mt-2">{comment.comment}</Text>
+                                                    )}
+                                                </View>
                                             </View>
-                                            <Text className="text-sm mt-1">{comment.comment}</Text>
+                                            {/* Only show options menu for user's own comments */}
+                                            {showOptions === comment.$id && comment.users?.$id === userData?.$id && (
+                                                <>
+                                                    <TouchableOpacity 
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            bottom: 0,
+                                                            zIndex: 1000
+                                                        }}
+                                                        onPress={() => setShowOptions(null)}
+                                                    />
+                                                    <View 
+                                                        className="absolute right-4 top-10 bg-white rounded-md shadow-md p-2"
+                                                        style={{ 
+                                                            zIndex: 1001,
+                                                            elevation: 5,
+                                                            shadowColor: '#000',
+                                                            shadowOffset: { width: 0, height: 2 },
+                                                            shadowOpacity: 0.25,
+                                                            shadowRadius: 3.84,
+                                                        }}
+                                                    >
+                                                        <TouchableOpacity 
+                                                            className="flex-row items-center gap-2 p-2"
+                                                            onPress={() => handleEditComment(comment.$id, comment.comment)}
+                                                        >
+                                                            <EditIcon2 width={12} height={12} />
+                                                            <Text className="text-xs">Edit</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity 
+                                                            className="flex-row items-center gap-2 p-2"
+                                                            onPress={() => handleDeleteComment(comment.$id)}
+                                                        >
+                                                            <DeleteIcon width={12} height={12} />
+                                                            <Text className="text-xs">Delete</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </>
+                                            )}
                                         </View>
                                     ))}
                                 </View>
@@ -553,8 +769,8 @@ const CustomerLogScreen = () => {
                 {/* Update button */}
                 <ButtonComponent 
                     label={isUpdating ? "Updating..." : "Update"} 
-                    onPress={() => handleUpdate()} 
-                    className="mt-5"
+                    onPress={handleUpdate} 
+                    className="mt-10"
                     loading={isUpdating}
                     disabled={isUpdating}
                 />

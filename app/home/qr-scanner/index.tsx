@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Image, Text, TouchableOpacity, View } from "react-native";
+import { Button, Image, Text, TouchableOpacity, View, StyleSheet, Alert, Modal, ActivityIndicator } from "react-native";
 import { CameraView, Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
@@ -10,6 +10,7 @@ import CloseIcon from "@/components/svg/closeIcon";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
 import { databases, databaseId, customersId, scansId } from "@/lib/appwrite";
+import UploadIcon from "@/components/svg/uploadIcon";
 
 interface Customer {
   id: string;
@@ -23,6 +24,7 @@ interface Customer {
 const QrScannerScreen = () => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const dispatch = useDispatch();
   const userData = useSelector((state: RootState) => state.user.data);
   const currentDealershipLevel1 = useSelector((state: RootState) => state.current.currentDealershipLevel1);
@@ -48,7 +50,10 @@ const QrScannerScreen = () => {
   }, []);
 
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (scanned) return;
     setScanned(true);
+    setIsProcessing(true);
+
     try {
       console.log("QR Code scanned data:", data);
       const customerId = data;
@@ -124,8 +129,9 @@ const QrScannerScreen = () => {
       router.push("/home/customers/customer-assignment");
     } catch (err) {
       console.error("Error processing scan:", err);
-      alert("Failed to process QR code");
+      Alert.alert("Error", "Failed to process QR code. Please try again.");
     } finally {
+      setIsProcessing(false);
       setScanned(false);
     }
   };
@@ -190,7 +196,6 @@ const QrScannerScreen = () => {
 
   return (
     <View className="bg-color1 h-screen relative">
-
       <CameraView
         facing="back"
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
@@ -200,16 +205,12 @@ const QrScannerScreen = () => {
         className="flex-1"
         style={{ height: "100%" }}
       >
-
-        {/* Upload button */}
-        <View className="absolute top-16 left-1/2 -translate-x-1/2 z-10"><Text className="text-white text-xl">QR Scanner</Text></View>
-
         {/* Close Button */}
         <TouchableOpacity
           onPress={() => router.push("/home")}
           className="absolute top-5 right-5 z-10 opacity-80">
-            <CloseIcon stroke="white" width={30} height={30}/>
-          </TouchableOpacity>
+          <CloseIcon stroke="white" width={30} height={30}/>
+        </TouchableOpacity>
 
         {/* Blur overlay with hole */}
         <View className="absolute top-0 left-0 right-0 bottom-0">
@@ -218,7 +219,6 @@ const QrScannerScreen = () => {
             className="h-[25vh] bg-black opacity-50" // Matches your mt-20
           >
           </View>
-
 
           {/* Middle section */}
           <View className="flex-row h-64">
@@ -247,14 +247,25 @@ const QrScannerScreen = () => {
         </View>
 
         {/* Upload button */}
-        <TouchableOpacity onPress={handleImageUpload}>
-          <Image
-            source={require("@/assets/images/upload.svg")}
-            style={{ width: 51, height: 51 }}
-            className="mt-16 mx-auto"
-          />
+        <TouchableOpacity onPress={handleImageUpload} className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
+          <View className="items-center justify-center">
+            <UploadIcon width={51} height={51} />
+            <Text className="text-white mx-auto mt-2 text-[10px]">UPLOAD QR</Text>
+          </View>
         </TouchableOpacity>
-        <Text className="text-white mx-auto mt-2 text-[10px]">UPLOAD QR</Text>
+
+        <Modal
+          transparent={true}
+          visible={isProcessing}
+          animationType="fade"
+        >
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="bg-white p-6 rounded-lg items-center">
+              <ActivityIndicator size="large" color="#3D12FA" />
+              <Text className="mt-3 text-sm font-medium">Processing QR Code...</Text>
+            </View>
+          </View>
+        </Modal>
       </CameraView>
     </View>
   );

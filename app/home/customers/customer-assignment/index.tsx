@@ -42,6 +42,7 @@ const CustomerAssignmentScreen = () => {
   const customer = useSelector((state: RootState) => state.customer.selectedCustomer);
   const [allUsers, setAllUsers] = useState<any[]>([]); // State to hold users list
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -129,6 +130,7 @@ const CustomerAssignmentScreen = () => {
 
   const handleAssign = async () => {
     try {
+      setIsAssigning(true);
       if (!selectedName || !customer) {
         console.error("No name selected or no customer data");
         return;
@@ -183,6 +185,8 @@ const CustomerAssignmentScreen = () => {
       router.push("/home/customers/customer-log");
     } catch (error) {
       console.error("Error updating scan:", error);
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -336,9 +340,11 @@ const CustomerAssignmentScreen = () => {
         </View>
 
         <ButtonComponent
-          label="Assign"
+          label={isAssigning ? "Assigning..." : "Assign"}
           onPress={handleAssign}
           className="mt-10"
+          disabled={isAssigning}
+          loading={isAssigning}
         />
       </View>
     </View>
