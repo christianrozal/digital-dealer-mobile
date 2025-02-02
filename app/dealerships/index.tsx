@@ -6,7 +6,7 @@ import ButtonComponent from "@/components/button";
 import { router } from "expo-router";
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedRooftopData } from '@/lib/store/rooftopSlice';
-import { setCurrentRooftop, setCurrentConsultant } from '@/lib/store/currentSlice';
+import { setCurrentDealershipLevel2, setCurrentDealershipLevel3, setCurrentConsultant } from '@/lib/store/currentSlice';
 import { databases, account, usersId, databaseId } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { setUserData, setLoading, setError } from '@/lib/store/userSlice';
@@ -31,20 +31,21 @@ interface Scan {
   dealershipLevel2?: { $id: string };
   dealershipLevel3?: { $id: string };
   customers?: any;
-  interest_status?: string;
-  interested_in?: string;
-  follow_up_date?: string;
+  interestStatus?: string;
+  interestedIn?: string;
+  followUpDate?: string;
 }
 
 interface UserData {
   $id: string;
+  name?: string;
   dealershipLevel1?: {
     $id: string;
     name: string;
-  };
+  }[];
   dealershipLevel2?: DealershipLevel2[];
   dealershipLevel3?: DealershipLevel3[];
-  scans?: Scan[];  // This is what comes from Appwrite
+  scans?: Scan[];
 }
 
 const DealershipsScreen = () => {
@@ -56,6 +57,7 @@ const DealershipsScreen = () => {
   
   const dispatch = useDispatch();
   const userData = useSelector((state: RootState) => state.user.data) as UserData;
+  const loading = useSelector((state: RootState) => state.user.loading);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -69,15 +71,36 @@ const DealershipsScreen = () => {
         );
 
         if (response.documents.length > 0) {
-          const userData = response.documents[0] as unknown as UserData;
+          // Map the raw data from Appwrite to our expected format
+          const rawUserData = response.documents[0];
+          console.log('Raw User Data from Appwrite:', {
+            dealershipLevel1: rawUserData.dealershipLevel1,
+            dealershipLevel2: rawUserData.dealershipLevel2,
+            dealershipLevel3: rawUserData.dealershipLevel3
+          });
+
+          const userData = {
+            ...rawUserData,
+            dealershipLevel1: rawUserData.dealershipLevel1 || [],
+            dealershipLevel2: rawUserData.dealershipLevel2 || [],
+            dealershipLevel3: rawUserData.dealershipLevel3 || []
+          } as unknown as UserData;
+          
+          console.log('Mapped User Data:', {
+            dealershipLevel1: userData.dealershipLevel1,
+            dealershipLevel2: userData.dealershipLevel2,
+            dealershipLevel3: userData.dealershipLevel3
+          });
+          
           dispatch(setUserData(userData));
-          console.log('User Data:', userData);
         } else {
           dispatch(setError('User not found'));
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
         dispatch(setError(error instanceof Error ? error.message : 'Failed to fetch user data'));
+      } finally {
+        dispatch(setLoading(false));  // Make sure to set loading to false
       }
     };
 
@@ -106,6 +129,17 @@ const DealershipsScreen = () => {
     ) || [];
     setAvailableRooftops(rooftops);
 
+    // Update current dealership level 2
+    dispatch(setCurrentDealershipLevel2(dealership.$id));
+    // Reset dealership level 3 when selecting a new level 2
+    dispatch(setCurrentDealershipLevel3(null));
+
+    console.log('Selected Dealership Level 2:', {
+      id: dealership.$id,
+      name: dealership.name,
+      level3: null // Reset when selecting new level 2
+    });
+
     // Update Redux with filtered data
     if (userData) {
       // Filter scans for this dealership
@@ -127,6 +161,18 @@ const DealershipsScreen = () => {
     setSelectedRooftop(rooftop);
     setIsRooftopDropdownOpen(false);
     
+    // Update current dealership level 3
+    dispatch(setCurrentDealershipLevel3(rooftop.$id));
+    
+    console.log('Selected Dealership Level 3:', {
+      id: rooftop.$id,
+      name: rooftop.name,
+      level2: {
+        id: selectedDealership?.$id,
+        name: selectedDealership?.name
+      }
+    });
+
     // Update Redux with filtered data
     if (userData && selectedDealership) {
       // Filter scans for this rooftop
@@ -147,7 +193,7 @@ const DealershipsScreen = () => {
   const handleContinue = () => {
     if (!selectedDealership || !userData) return;
     
-    // If there are rooftops available, require one to be selected
+    // If there are level3s available, require one to be selected
     if (availableRooftops.length > 0 && !selectedRooftop) return;
 
     // Filter scans based on selection
@@ -161,23 +207,38 @@ const DealershipsScreen = () => {
     // Update Redux with filtered scans only, keep other data intact
     dispatch(setUserData({
       ...userData,
-      scans: filteredScans  // Update scans in Redux
+      scans: filteredScans
     }));
     
-    dispatch(setCurrentRooftop(selectedRooftop?.$id || selectedDealership.$id));
+    // Update current states
+    if (selectedRooftop) {
+      dispatch(setCurrentDealershipLevel3(selectedRooftop.$id));
+    } else {
+      dispatch(setCurrentDealershipLevel2(selectedDealership.$id));
+    }
     dispatch(setCurrentConsultant(userData.$id || null));
     
-    console.log('Final selected data:', {
-      dealershipLevel1: userData.dealershipLevel1,
-      dealershipLevel2: userData.dealershipLevel2,
-      dealershipLevel3: userData.dealershipLevel3,
-      scans: filteredScans  // Log as scans
+    console.log('Final Selected State:', {
+      dealershipLevel2: {
+        id: selectedDealership.$id,
+        name: selectedDealership.name
+      },
+      dealershipLevel3: selectedRooftop ? {
+        id: selectedRooftop.$id,
+        name: selectedRooftop.name
+      } : null,
+      consultant: {
+        id: userData.$id,
+        name: userData.name
+      }
     });
     
     router.push("/home");
   };
 
-  const level1Name = userData?.dealershipLevel1?.name || "Loading...";
+  const level1Name = loading 
+    ? "Loading..." 
+    : userData?.dealershipLevel1?.[0]?.name || "No dealership assigned";
 
   return (
     <View className="items-center justify-center h-screen w-full max-w-60 mx-auto">

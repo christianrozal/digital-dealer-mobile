@@ -30,9 +30,10 @@ interface Scan {
         interestStatus?: string;
         interestedIn?: string;
     };
-    interest_status?: string;
-    interested_in?: string;
-    follow_up_date?: string;
+    interestStatus?: string;
+    interestedIn?: string;
+    followUpDate?: string;
+    scanCount?: number;
 }
 
 interface UserState {
@@ -45,10 +46,7 @@ interface UserState {
         role?: string;
         profileImage?: string;
         profileImageId?: string;
-        dealershipLevel1?: {
-            $id: string;
-            name: string;
-        };
+        dealershipLevel1?: DealershipLevel1[];
         dealershipLevel2?: DealershipLevel2[];
         dealershipLevel3?: DealershipLevel3[];
         scans?: Scan[];

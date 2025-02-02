@@ -8,266 +8,342 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
 import { Client, Storage, ID, Databases } from 'react-native-appwrite';
-import * as ImagePicker from 'react-native-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { setConsultant } from '@/lib/store/consultantSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
-
+import { databaseId, customersId, projectId, bucketId } from '@/lib/appwrite';
 
 // Initialize Appwrite client
 const client = new Client();
 client
     .setEndpoint('https://cloud.appwrite.io/v1')
-    .setProject('6780c774003170c68252');
+    .setProject(projectId);
 
 const storage = new Storage(client);
 const databases = new Databases(client);
-const BUCKET_ID = '679a6a24003b707de5c0';
-const DATABASE_ID = "67871d61002bf7e6bc9e";
-const COLLECTION_ID = "678724210037c2b3b179";
+const BUCKET_ID = bucketId;
+const DATABASE_ID = databaseId;
+const COLLECTION_ID = customersId;
 
+
+interface AppwriteCustomer {
+  $id: string;
+  id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  profileImage?: string;
+  profileImageId?: string;
+}
 
 interface Customer {
-   $id?: string;
-    name?: string;
-    email?: string;
-    phone?: string;
-   'profile-icon'?: string;
-    profileImageId?: string;
-    [key: string]: any;
+  id: string;
+  $id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  profileImage?: string;
+  interestStatus?: string;
+  interestedIn?: string;
+  $collectionId?: string;
+  $databaseId?: string;
+  $createdAt?: string;
+  $updatedAt?: string;
+  $permissions?: string[];
 }
 
 interface Scan {
-    customers?: Customer;
-      [key: string]: any;
+  $id: string;
+  $createdAt: string;
+  customers: Customer;
+  interestStatus?: string;
+  interestedIn?: string;
+  followUpDate?: string;
+  scanCount?: number;
 }
 
 const EditCustomerScreen = () => {
-    const customerId = useSelector((state: RootState) => state.customer.selectedCustomer?.$id);
-     const { data: allConsultantData} = useSelector(
-        (state: RootState) => state.consultant
+  const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
+  const currentScanId = useSelector((state: RootState) => state.current.currentScan);
+  const userData = useSelector((state: RootState) => state.user.data);
+
+  // Find the current scan and customer data from userSlice
+  const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
+  const customerData = currentScan?.customers;
+
+  const dispatch = useDispatch();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
+
+  useEffect(() => {
+    if (customerData) {
+      setFormData({
+        name: customerData.name || '',
+        email: customerData.email || '',
+        phone: customerData.phone || ''
+      });
+
+      console.log('Edit Screen Data:', {
+        currentScanId,
+        currentCustomerId,
+        customerData
+      });
+    }
+  }, [customerData, currentScanId, currentCustomerId]);
+
+  if (!currentScan || !customerData) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text>No customer data available.</Text>
+      </View>
     );
-    const dispatch = useDispatch();
-      const [customer, setCustomer] = useState<any>(null);
-     const [profileImage, setProfileImage] = useState<string | null>(null);
-     const [formData, setFormData] = useState({
-          name: customer?.name || '',
-         email: customer?.email || '',
-          phone: customer?.phone || ''
-    });
-     const [loading, setLoading] = useState(false);
+  }
 
-    useEffect(() => {
-         if (allConsultantData?.scans && customerId) {
-           const customerFromConsultant = allConsultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.customers;
-           if (customerFromConsultant){
-            
-              setCustomer(customerFromConsultant)
-               setFormData({
-                  name: customerFromConsultant?.name || '',
-                   email: customerFromConsultant?.email || '',
-                    phone: customerFromConsultant?.phone || ''
-               })
-           }
-         }
-       }, [allConsultantData, customerId]);
+  // Handle text input changes
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
+  // Update customer information in database
+  const handleUpdateCustomer = async () => {
+    setLoading(true);
+    try {
+      const appwriteCustomer = customerData as AppwriteCustomer;
+      if (!appwriteCustomer.$id) {
+        Alert.alert('Error', 'No customer ID found');
+        return;
+      }
 
-    // Handle text input changes
-    const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
+      // Update customer in Appwrite
+      const updatedCustomer = await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_ID,
+        appwriteCustomer.$id,
+        {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          profileImage: appwriteCustomer.profileImage,
+          profileImageId: appwriteCustomer.profileImageId
+        }
+      );
+
+      // Update all scans that reference this customer
+      const updatedScans = userData?.scans?.map((scan) => {
+        const scanCustomer = scan.customers as AppwriteCustomer;
+        if (scanCustomer.$id === appwriteCustomer.$id) {
+          return {
+            ...scan,
+            customers: {
+              ...scan.customers,
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              profileImage: appwriteCustomer.profileImage,
+              profileImageId: appwriteCustomer.profileImageId
+            }
+          };
+        }
+        return scan;
+      }) || [];
+
+      // Update Redux store
+      if (userData) {
+        dispatch(setConsultant({
+          ...userData,
+          scans: updatedScans,
         }));
-    };
+      }
 
-    // Update customer information in database
-      const handleUpdateCustomer = async () => {
-          setLoading(true);
+      dispatch(setCustomerUpdateSuccess(true));
+      router.back();
+
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      Alert.alert('Error', 'Failed to update customer profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getInitials = (name: string | undefined): string => {
+    if (!name) return "Us";
+    const firstName = name.trim().split(" ")[0] || "";
+    if (!firstName) return "Us"
+    const firstLetter = firstName[0]?.toUpperCase() || "";
+    const secondLetter = firstName[1]?.toLowerCase() || "";
+    return `${firstLetter}${secondLetter}`;
+  };
+
+  const handleImageUpload = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+        selectionLimit: 1,
+      });
+
+      if (result.didCancel || !result.assets?.[0]?.uri) return;
+
+      const asset = result.assets[0];
+      if (!asset.uri) {
+        Alert.alert('Error', 'Could not get image URI');
+        return;
+      }
+
+      const appwriteCustomer = customerData as AppwriteCustomer;
+
+      // Delete old profile image if it exists
+      if (appwriteCustomer.profileImageId) {
         try {
-             if (!customer?.$id) {
-                Alert.alert('Error', 'No customer profile found');
-                return;
-            }
-
-              // Upload new image if changed
-              let imageId = customer.profileImageId;
-              let previewUrlString = customer['profile-icon'];
-
-                if (profileImage) {
-                    const fileName = profileImage.split('/').pop();
-                    const fileType = 'image/jpeg';
-                    const response = await fetch(profileImage);
-                    const blob = await response.blob();
-
-                    // Create the file object that Appwrite expects
-                     const file = {
-                        name: fileName || 'profile.jpg',
-                        type: fileType,
-                        size: blob.size,
-                        uri: profileImage
-                    }
-
-                    const uploadResponse = await storage.createFile(
-                        BUCKET_ID,
-                        ID.unique(),
-                        file
-                    );
-                    // Get preview URL
-                    previewUrlString = storage.getFilePreview(
-                        BUCKET_ID,
-                        uploadResponse.$id,
-                        500,
-                        500
-                    ).toString();
-                    imageId = uploadResponse.$id
-                }
-               
-             // Update the customer record
-            const updatedDocument = await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTION_ID,
-                customer.$id,
-                {
-                    name: formData.name,
-                    email: formData.email,
-                    phone: formData.phone,
-                    'profile-icon': previewUrlString,
-                    'profileImageId': imageId,
-                }
-            );
-
-
-             // Find the scan with the current customer id to update it
-            const updatedScans = allConsultantData?.scans?.map((scan:Scan) => {
-                 if (scan.customers?.$id === customer.$id) {
-                  return {
-                     ...scan,
-                      customers: {
-                        ...scan.customers,
-                        ...updatedDocument,
-                      },
-                  };
-                }
-              return scan;
-          })
-
-             // Update Redux store
-             dispatch(setConsultant({
-                ...allConsultantData,
-                 scans: updatedScans,
-            }));
-            dispatch(setCustomerUpdateSuccess(true)); // Trigger success state
-            Alert.alert('Success', 'Customer profile updated successfully!');
-              router.push('/home/customers/customer-details');
+          await storage.deleteFile(BUCKET_ID, appwriteCustomer.profileImageId);
         } catch (error) {
-            dispatch(setCustomerUpdateSuccess(false)); // Trigger error state
-            Alert.alert('Error', 'Failed to update customer profile');
-            console.error('Update error:', error);
-        } finally {
-              setLoading(false);
+          console.log('No previous image to delete or error deleting:', error);
         }
-    };
+      }
 
-    const getInitials = (name: string | undefined): string => {
-        if (!name) return "Us";
-        const firstName = name.trim().split(" ")[0] || "";
-        if (!firstName) return "Us"
-        const firstLetter = firstName[0]?.toUpperCase() || "";
-        const secondLetter = firstName[1]?.toLowerCase() || "";
-        return `${firstLetter}${secondLetter}`;
-    };
+      // Upload new image
+      const uploadedFile = await storage.createFile(
+        BUCKET_ID,
+        ID.unique(),
+        {
+          name: asset.fileName || 'profile.jpg',
+          type: asset.type || 'image/jpeg',
+          size: asset.fileSize || 0,
+          uri: asset.uri
+        }
+      );
 
-     const handleImageUpload = async () => {
-         try {
-            const result = await ImagePicker.launchImageLibrary({
-                mediaType: 'photo',
-                quality: 0.8,
-            });
+      // Get the file view URL
+      const fileUrl = storage.getFileView(BUCKET_ID, uploadedFile.$id).toString();
 
-            if (result.didCancel) return;
+      // Update customer with new profile image
+      const updatedCustomer = await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_ID,
+        appwriteCustomer.$id,
+        {
+          profileImage: fileUrl,
+          profileImageId: uploadedFile.$id
+        }
+      );
 
-            if (result.assets && result.assets[0].uri) {
-                 setProfileImage(result.assets[0].uri);
+      // Update local state
+      const updatedScans = userData?.scans?.map((scan) => {
+        const scanCustomer = scan?.customers as AppwriteCustomer;
+        if (scanCustomer?.$id === appwriteCustomer.$id) {
+          return {
+            ...scan,
+            customers: {
+              ...scanCustomer,
+              profileImage: fileUrl,
+              profileImageId: uploadedFile.$id
             }
-        } catch (error) {
-            Alert.alert('Error', 'Failed to upload image');
-            console.error('Image upload error:', error);
+          } as Scan;
         }
-    };
+        return scan;
+      }) || [];
 
+      dispatch(setConsultant({
+        ...userData,
+        scans: updatedScans,
+      }));
 
+      Alert.alert('Success', 'Profile image updated successfully');
+
+    } catch (error) {
+      console.error('Image upload error:', error);
+      Alert.alert('Error', 'Failed to upload image');
+    }
+  };
+
+  const renderProfileImage = () => {
+    const profileImage = (customerData as AppwriteCustomer).profileImage;
+
+    if (profileImage && profileImage !== 'black') {
+      return (
+        <Image
+          source={{ uri: profileImage }}
+          style={{ width: 100, height: 100, borderRadius: 50 }}
+        />
+      );
+    }
 
     return (
-
-        <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
-            <View>
-                {/* Header */}
-                <View className="flex-row w-full justify-between items-center">
-                    <TouchableOpacity onPress={() => router.push("/home/customers/customer-details")}>
-                        <BackArrowIcon />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => router.push("/home")}>
-                        <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
-                    </TouchableOpacity>
-                    <View style={{ width: 18 }} />
-                </View>
-
-                <View className=' px-4'>
-                    <Text className="text-2xl font-semibold mt-10">Edit Customer Profile</Text>
-                     <TouchableOpacity className='mt-10 mx-auto' onPress={handleImageUpload}>
-                            <View
-                                className="bg-color1 rounded-full flex items-center justify-center"
-                                style={{ width: 100, height: 100 }}
-                            >
-                                {(profileImage || customer?.['profile-icon']) ? (
-                                    <Image
-                                        source={{ uri: profileImage || customer['profile-icon'] }}
-                                        style={{ width: 100, height: 100, borderRadius: 50 }}
-                                    />
-                                ) : (
-                                        <Text className="text-white font-bold" style={{ fontSize: 30 }}>
-                                          {getInitials(customer?.name)}
-                                        </Text>
-                                )}
-                            </View>
-                            <View className='ml-auto -mt-5'>
-                                <CameraIcon />
-                            </View>
-                        </TouchableOpacity>
-                    <View className='gap-3 mt-10'>
-                        <TextInput
-                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                            placeholder="Full Name"
-                            value={formData.name}
-                            onChangeText={(text) => handleInputChange('name', text)}
-                        />
-                        <TextInput
-                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                            placeholder="Email Address"
-                            value={formData.email}
-                            onChangeText={(text) => handleInputChange('email', text)}
-                             keyboardType="email-address"
-                        />
-                        <TextInput
-                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                            placeholder="Phone Number"
-                            value={formData.phone}
-                            onChangeText={(text) => handleInputChange('phone', text)}
-                            keyboardType="phone-pad"
-                         />
-                    </View>
-                </View>
-            </View>
-             <View>
-                <ButtonComponent
-                    label={loading ? "Updating..." : "Update Customer"}
-                    onPress={handleUpdateCustomer}
-                    disabled={loading}
-                  loading={loading} // Pass loading prop for conditional rendering of the activity indicator in the button
-                />
-            </View>
-        </View>
+      <Text className="text-white font-bold" style={{ fontSize: 30 }}>
+        {getInitials(customerData.name || '')}
+      </Text>
     );
+  };
+
+  return (
+    <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
+      <View>
+        {/* Header */}
+        <View className="flex-row w-full justify-between items-center">
+          <TouchableOpacity onPress={() => router.push("/home/customers/customer-details")}>
+            <BackArrowIcon />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/home")}>
+            <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
+          </TouchableOpacity>
+          <View style={{ width: 18 }} />
+        </View>
+
+        <View className=' px-4'>
+          <Text className="text-2xl font-semibold mt-10">Edit Customer Profile</Text>
+          <TouchableOpacity className='mt-10 mx-auto' onPress={handleImageUpload}>
+            <View
+              className="bg-color1 rounded-full items-center justify-center"
+              style={{ width: 100, height: 100 }}
+            >
+              {renderProfileImage()}
+            </View>
+            <View className='ml-auto -mt-5'>
+              <CameraIcon />
+            </View>
+          </TouchableOpacity>
+          <View className='gap-3 mt-10'>
+            <TextInput
+              className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
+              placeholder="Full Name"
+              value={formData.name}
+              onChangeText={(text) => handleInputChange('name', text)}
+            />
+            <TextInput
+              className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
+              placeholder="Email Address"
+              value={formData.email}
+              onChangeText={(text) => handleInputChange('email', text)}
+              keyboardType="email-address"
+            />
+            <TextInput
+              className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
+              placeholder="Phone Number"
+              value={formData.phone}
+              onChangeText={(text) => handleInputChange('phone', text)}
+              keyboardType="phone-pad"
+            />
+          </View>
+        </View>
+      </View>
+      <View>
+        <ButtonComponent
+          label={loading ? "Updating..." : "Update Customer"}
+          onPress={handleUpdateCustomer}
+          disabled={loading}
+          loading={loading}
+        />
+      </View>
+    </View>
+  );
 };
 
 export default EditCustomerScreen;

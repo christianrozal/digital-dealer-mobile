@@ -16,21 +16,24 @@ import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 import SuccessAnimation from '@/components/successAnimation'; // Assume this exists
 
 interface Customer {
-   $id?: string;
-    name?: string;
-    email?: string;
-    phone?: string;
-    'profile-icon'?: string;
-    profileImageId?: string;
-    [key: string]: any;
+   id: string;
+   name?: string;
+   email?: string;
+   phone?: string;
+   'profile-icon'?: string;
+   profileImage?: string;
+   interestStatus?: string;
+   interestedIn?: string;
 }
 
 interface Scan {
-    customers?: Customer;
-    $createdAt?: string;
-    interest_status?: string;
-     interested_in?: string;
-      [key: string]: any;
+    $id: string;
+    $createdAt: string;
+    customers: Customer;
+    interestStatus?: string;
+    interestedIn?: string;
+    followUpDate?: string;
+    scanCount?: number;
 }
 
 const SelectedCustomerScreen = () => {
@@ -39,56 +42,49 @@ const SelectedCustomerScreen = () => {
   const customerUpdateSuccess = useSelector((state: RootState) => state.ui.customerUpdateSuccess);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
+  const currentScanId = useSelector((state: RootState) => state.current.currentScan);
+  const userData = useSelector((state: RootState) => state.user.data);
+
+  // Find the current scan and customer data from userSlice
+  const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
+  const customerData = currentScan?.customers;
+
   useFocusEffect(
     useCallback(() => {
-      // Reset scroll position when the screen comes into focus
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     }, [])
   );
 
-   const { data: consultantData} = useSelector(
-    (state: RootState) => state.consultant
-  );
- const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  useEffect(() => {
+    if (customerUpdateSuccess) {
+      setShowSuccess(true);
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+        dispatch(setCustomerUpdateSuccess(false));
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [customerUpdateSuccess, dispatch]);
 
+  useEffect(() => {
+    console.log('Customer Details Screen Data:', {
+      currentScanId,
+      currentCustomerId,
+      scan: currentScan ? {
+        id: currentScan.$id,
+        createdAt: currentScan.$createdAt,
+        interestStatus: currentScan.interestStatus,
+        interestedIn: currentScan.interestedIn,
+        customer: currentScan.customers
+      } : null
+    });
+  }, [currentScan, currentScanId, currentCustomerId]);
 
- const customerId = useSelector(
-    (state: RootState) => state.customer.selectedCustomer?.$id
-  );
-
-    useEffect(() => {
-         if (consultantData?.scans && customerId) {
-           const customerFromConsultant = consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.customers;
-           if (customerFromConsultant){
-             const updatedCustomer = {
-                ...customerFromConsultant,
-                lastScanned: consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.$createdAt,
-                scanCount: consultantData.scans.filter((scan: Scan) => scan.customers?.$id === customerId).length,
-                interestStatus: consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.interest_status,
-                interestedIn: consultantData.scans.find((scan: Scan) => scan.customers?.$id === customerId)?.interested_in,
-               }
-                setSelectedCustomer(updatedCustomer)
-           }
-         }
-       }, [consultantData, customerId]);
-
-
-    useEffect(() => {
-        if (customerUpdateSuccess) {
-            setShowSuccess(true);
-            const timer = setTimeout(() => {
-                setShowSuccess(false);
-                dispatch(setCustomerUpdateSuccess(false));
-            }, 2000); // Match animation duration
-            return () => clearTimeout(timer);
-        }
-    }, [customerUpdateSuccess, dispatch]);
-
-
-  if (!selectedCustomer) {
+  if (!currentScan || !customerData) {
     return (
       <View className="flex-1 justify-center items-center">
-        <Text>No customer selected.</Text>
+        <Text>No customer data available.</Text>
       </View>
     );
   }
@@ -109,90 +105,80 @@ const SelectedCustomerScreen = () => {
 
   return (
     <>
-    {showSuccess && <SuccessAnimation message='Customer Profile Updated' />}
-    <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
-          
-      <View>
-        {/* Header */}
-        <View className="flex-row w-full justify-between items-center">
-          <TouchableOpacity onPress={() => router.push("/home/customers")}>
-            <BackArrowIcon />
-          </TouchableOpacity>
-          {/* Logo */}
-          <TouchableOpacity onPress={() => { router.push("/home") }}>
-            <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
-          </TouchableOpacity>
-          <View className="w-[18px]" />
-        </View>
-        <View className="px-4">
-           <TouchableOpacity 
+      {showSuccess && <SuccessAnimation message='Customer Profile Updated' />}
+      <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
+        <View>
+          {/* Header */}
+          <View className="flex-row w-full justify-between items-center">
+            <TouchableOpacity onPress={() => router.push("/home/customers")}>
+              <BackArrowIcon />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { router.push("/home") }}>
+              <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
+            </TouchableOpacity>
+            <View className="w-[18px]" />
+          </View>
+          <View className="px-4">
+            <TouchableOpacity 
               className="flex-row gap-1 ml-auto bg-white p-2 z-10 mt-8"
               onPress={() => { router.push("/home/customers/customer-details/edit") }}
-          >
-            <EditIcon /> <Text className="text-xs text-gray-300">Edit...</Text>
-          </TouchableOpacity>
-          <View
-            className="bg-white rounded-md justify-center items-center p-5 shadow-lg z-0"
-          >
-            <View
-              className="bg-color1 rounded-full items-center justify-center w-[100px] h-[100px]"
             >
-                {selectedCustomer?.['profile-icon'] ? (
-                    <Image
-                        source={{ uri: selectedCustomer['profile-icon'] }}
-                        className="w-[100px] h-[100px] rounded-full"
-                    />
+              <EditIcon /> <Text className="text-xs text-gray-300">Edit...</Text>
+            </TouchableOpacity>
+            <View className="bg-white rounded-md justify-center items-center p-5 shadow-lg z-0">
+              <View className="bg-color1 rounded-full items-center justify-center w-[100px] h-[100px]">
+                {(customerData as any)['profile-icon'] ? (
+                  <Image
+                    source={{ uri: (customerData as any)['profile-icon'] }}
+                    className="w-[100px] h-[100px] rounded-full"
+                  />
                 ) : (
-                    <Text className="text-white font-bold text-[30px]">
-                        {getInitials(selectedCustomer.name)}
-                    </Text>
-                  )}
-            </View>
-            <Text className="text-2xl font-semibold mt-3">{selectedCustomer.name || 'Customer Name'}</Text>
-            <View className="flex-row items-center mt-2 gap-[10px]">
-              <Text className='text-xs text-gray-500'>#scans: {selectedCustomer.scanCount || 0}</Text>
-              <View className="flex-row gap-2">
-                <Text
-                  className={`rounded-full text-[10px] border font-semibold px-2 py-0.5 ${
-                    selectedCustomer.interestStatus === "Hot"
-                      ? "border-red-400 bg-red-100 text-red-600"
-                      : selectedCustomer.interestStatus === "Warm"
-                        ? "border-orange-400 bg-orange-100 text-orange-600"
-                        : "border-gray-400 bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {selectedCustomer.interestStatus || 'N/A'}
-                </Text>
+                  <Text className="text-white font-bold text-[30px]">
+                    {getInitials(customerData.name || '')}
+                  </Text>
+                )}
+              </View>
+              <Text className="text-2xl font-semibold mt-3">{customerData.name || 'Customer Name'}</Text>
+              <View className="flex-row items-center mt-2 gap-[10px]">
+                <Text className='text-xs text-gray-500'>#scans: {currentScan.scanCount || 1}</Text>
+                <View className="flex-row gap-2">
+                  <Text
+                    className={`rounded-full text-[10px] border font-semibold px-2 py-0.5 ${
+                      currentScan.interestStatus === "Hot"
+                        ? "border-red-400 bg-red-100 text-red-600"
+                        : currentScan.interestStatus === "Warm"
+                          ? "border-orange-400 bg-orange-100 text-orange-600"
+                          : "border-gray-400 bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {currentScan.interestStatus || 'N/A'}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
-          <View
-            className="py-3 flex-row bg-color3 items-center gap-3 mt-8 rounded-md px-6"
-          >
-            <EmailIcon stroke="#3D12FA" width={20} height={20} />
-            <Text className="text-xs">{selectedCustomer.email || 'No email'}</Text>
-          </View>
-          <View
-            className="py-3 flex-row bg-color3 items-center gap-3 mt-3 rounded-md px-6"
-          >
-            <PhoneIcon stroke="#3D12FA" width={20} height={20} />
-            <Text className="text-xs">{selectedCustomer.phone || 'No phone number'}</Text>
-          </View>
-          <View className='flex-row justify-center mt-5'>
-            <Text className='text-xs text-gray-500'>
-              <Text className='font-bold'>Last scanned:</Text> {selectedCustomer.lastScanned ? formatDate(selectedCustomer.lastScanned) : 'No scan data'}
-            </Text>
+            <View className="py-3 flex-row bg-color3 items-center gap-3 mt-8 rounded-md px-6">
+              <EmailIcon stroke="#3D12FA" width={20} height={20} />
+              <Text className="text-xs">{customerData.email || 'No email'}</Text>
+            </View>
+            <View className="py-3 flex-row bg-color3 items-center gap-3 mt-3 rounded-md px-6">
+              <PhoneIcon stroke="#3D12FA" width={20} height={20} />
+              <Text className="text-xs">{customerData.phone || 'No phone number'}</Text>
+            </View>
+            <View className='flex-row justify-center mt-5'>
+              <Text className='text-xs text-gray-500'>
+                <Text className='font-bold'>Last scanned:</Text> {currentScan.$createdAt ? formatDate(currentScan.$createdAt) : 'No scan data'}
+              </Text>
+            </View>
           </View>
         </View>
+        <View className='px-4'>
+          <ButtonComponent
+            label="Show Customer Log"
+            var2
+            onPress={() => router.push("/home/customers/customer-log")}
+          />
+        </View>
       </View>
-      <View className='px-4'>
-        <ButtonComponent
-          label="Show Customer Log"
-          var2
-          onPress={() => router.push("/home/customers/customer-log")}
-        />
-      </View>
-    </View>
     </>
   );
 };

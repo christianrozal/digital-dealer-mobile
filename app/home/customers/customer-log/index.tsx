@@ -21,21 +21,24 @@ const client = new Client()
 
 const databases = new Databases(client);
 
+interface Customer {
+    id: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    profileImage?: string;
+    interestStatus?: string;
+    interestedIn?: string;
+}
+
 interface Scan {
     $id: string;
     $createdAt: string;
-    customers?: {
-        id: string;
-        name?: string;
-        phone?: string;
-        email?: string;
-        'profile-icon'?: string;
-        interestStatus?: string;
-        interestedIn?: string;
-    };
-    interest_status?: string;
-    interested_in?: string;
-    follow_up_date?: string;
+    customers: Customer;
+    interestStatus?: string;
+    interestedIn?: string;
+    followUpDate?: string;
+    scanCount?: number;
 }
 
 interface UserData {
@@ -44,14 +47,16 @@ interface UserData {
 }
 
 const CustomerLogScreen = () => {
-
     const DATABASE_ID = '67871d61002bf7e6bc9e';
     const COMMENTS_COLLECTION_ID = '6799d2430037c51dc502';
 
-    const selectedCustomer = useSelector(
-        (state: RootState) => state.customer.selectedCustomer
-    );
+    const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
+    const currentScanId = useSelector((state: RootState) => state.current.currentScan);
     const userData = useSelector((state: RootState) => state.user.data);
+
+    // Find the current scan and customer data from userSlice
+    const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
+    const customerData = currentScan?.customers;
 
     const [comment, setComment] = useState('');
     const [value, setValue] = useState<string | null>(null);
@@ -66,16 +71,27 @@ const CustomerLogScreen = () => {
     );
 
     useEffect(() => {
-        if (selectedCustomer) {
-            setValue(selectedCustomer?.interestStatus || null);
-            setInterestedIn(selectedCustomer?.interestedIn ? selectedCustomer.interestedIn.split(',') : []);
-        }
-    }, [selectedCustomer]);
+        if (currentScan) {
+            setValue(currentScan.interestStatus || null);
+            setInterestedIn(currentScan.interestedIn ? [currentScan.interestedIn] : []);
 
-    if (!selectedCustomer) {
+            console.log('Customer Log Screen Data:', {
+                currentScanId,
+                currentCustomerId,
+                scan: {
+                    id: currentScan.$id,
+                    interestStatus: currentScan.interestStatus,
+                    interestedIn: currentScan.interestedIn,
+                    customer: currentScan.customers
+                }
+            });
+        }
+    }, [currentScan, currentScanId, currentCustomerId]);
+
+    if (!currentScan || !customerData) {
         return (
             <View className="flex-1 justify-center items-center bg-black">
-                <Text className="text-white">No customer selected.</Text>
+                <Text className="text-white">No customer data available.</Text>
             </View>
         );
     }
@@ -111,21 +127,22 @@ const CustomerLogScreen = () => {
 
 
     const handleUpdate = async () => {
-        if (!userData || !selectedCustomer) return;
+        if (!userData || !currentScanId || !currentCustomerId || !customerData) return;
 
-        // Find the scan in userData.scans that matches this customer
-        const updatedScans = userData.scans?.map((scan: Scan) => {
-            if (scan.customers?.id === selectedCustomer.id) {
-                return {
+        // Update the scan in userData.scans
+        const updatedScans = userData.scans?.map(scan => {
+            if (scan.$id === currentScanId) {
+                const updatedScan: Scan = {
                     ...scan,
-                    interest_status: value || undefined,
-                    interested_in: interestedIn.join(','),
+                    interestStatus: value || undefined,
+                    interestedIn: interestedIn.join(','),
                     customers: {
-                        ...scan.customers,
+                        ...customerData,
                         interestStatus: value || undefined,
                         interestedIn: interestedIn.join(',')
                     }
                 };
+                return updatedScan;
             }
             return scan;
         }) || [];
@@ -136,23 +153,15 @@ const CustomerLogScreen = () => {
             scans: updatedScans
         }));
 
-        // Update the selected customer in Redux
-        const updatedCustomer = {
-            ...selectedCustomer,
-            interestStatus: value,
-            interestedIn: interestedIn.join(',')
-        };
-        dispatch(setSelectedCustomer(updatedCustomer));
-
         // Submit comment to Appwrite if provided
-        if (comment.trim() && selectedCustomer?.id) {
+        if (comment.trim()) {
             try {
                 await databases.createDocument(
                     DATABASE_ID,
                     COMMENTS_COLLECTION_ID,
                     ID.unique(),
                     {
-                        customerId: selectedCustomer.id,
+                        customerId: currentCustomerId,
                         text: comment,
                         timestamp: new Date().toISOString()
                     }
@@ -210,26 +219,29 @@ const CustomerLogScreen = () => {
     };
 
     const renderProfileIcon = () => {
-        const profileIconUrl = selectedCustomer?.['profile-icon'];
+        if (!customerData) return null;
+        
+        // Use type assertion to handle the profileImage property
+        const profileImage = customerData.profileImage;
 
-        if (profileIconUrl && profileIconUrl !== 'black') { // Use the URL if it exists and is not black
+        if (profileImage && profileImage !== 'black') {
             return (
                 <Image
-                    source={{ uri: profileIconUrl }}
+                    source={{ uri: profileImage }}
                     style={{ width: 56, height: 56, borderRadius: 28}}
                 />
             );
-        } else { // Fallback to initials
-           return (
-            <View
-                className="bg-color1 rounded-full flex items-center justify-center"
-                style={{ width: 56, height: 56 }}
-            >
-                <Text className="text-white font-bold text-sm">
-                    {generateInitials(selectedCustomer?.name)}
-                </Text>
-            </View>
-           )
+        } else {
+            return (
+                <View
+                    className="bg-color1 rounded-full flex items-center justify-center"
+                    style={{ width: 56, height: 56 }}
+                >
+                    <Text className="text-white font-bold text-sm">
+                        {generateInitials(customerData.name)}
+                    </Text>
+                </View>
+            );
         }
     };
 
@@ -257,14 +269,14 @@ const CustomerLogScreen = () => {
                   {renderProfileIcon()}
                     <View className="gap-1">
                         <Text className="text-white text-[10px]">
-                            Customer Name: <Text className="font-bold">{selectedCustomer.name || "No name"}</Text>
+                            Customer Name: <Text className="font-bold">{customerData.name || "No name"}</Text>
                         </Text>
                         <Text className="text-white text-[10px]">
                             Contact Number:{" "}
-                            <Text className="font-bold">{selectedCustomer.phone || "No phone"}</Text>
+                            <Text className="font-bold">{customerData.phone || "No phone"}</Text>
                         </Text>
                         <Text className="text-white text-[10px]">
-                            Email: <Text className="font-bold">{selectedCustomer.email || "No email"}</Text>
+                            Email: <Text className="font-bold">{customerData.email || "No email"}</Text>
                         </Text>
                     </View>
                 </View>
@@ -356,7 +368,7 @@ const CustomerLogScreen = () => {
                     >
                         <View className="flex-row justify-between items-center">
                             <Text className="text-xs">
-                            No scan data
+                            {formatDate(currentScan?.followUpDate ? new Date(currentScan.followUpDate) : null)}
                             </Text>
                             <Calendar2Icon width={16} height={16} />
                         </View>

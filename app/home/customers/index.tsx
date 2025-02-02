@@ -19,181 +19,210 @@ import dayjs from "dayjs";
 import CustomersFilter from "@/components/customersFilter";
 import { hideCustomersFilter, showCustomersFilter } from "@/lib/store/uiSlice";
 import { router } from "expo-router";
-import { setSelectedCustomer } from "@/lib/store/customerSlice"; // Import the action
+import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { useFocusEffect } from "@react-navigation/native";
 import AddIcon from "@/components/svg/addIcon";
+
+interface AppwriteCustomer {
+  $id: string;
+  id: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  profileImage?: string;
+  profileImageId?: string;
+  lastScanned?: string;
+  scanCount?: number;
+  interestStatus?: string;
+  interestedIn?: string;
+}
+
+interface Scan {
+  $id: string;
+  $createdAt: string;
+  customers: AppwriteCustomer;
+  interestStatus?: string;
+  interestedIn?: string;
+  followUpDate?: string;
+  scanCount?: number;
+}
 
 const CustomersScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
 
   useFocusEffect(
-      useCallback(() => {
-        // Reset scroll position when the screen comes into focus
-        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-      }, [])
-    );
-  const dispatch = useDispatch();
-  const { data: consultantData, status } = useSelector(
-    (state: RootState) => state.consultant
+    useCallback(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
   );
+  
+  const dispatch = useDispatch();
+  const userData = useSelector((state: RootState) => state.user.data);
+  const loading = useSelector((state: RootState) => state.user.loading);
+  
   const {
-      isCustomersFilterVisible,
-      customersSelectedInterestedIns,
-      customersSelectedInterestStatuses,
-      customersSortBy,
-      customersFromDate,
-      customersToDate,
-    } = useSelector((state: RootState) => state.ui);
+    isCustomersFilterVisible,
+    customersSelectedInterestedIns,
+    customersSelectedInterestStatuses,
+    customersSortBy,
+    customersFromDate,
+    customersToDate,
+  } = useSelector((state: RootState) => state.ui);
+
   const [groupedCustomers, setGroupedCustomers] = useState<{
-    [key: string]: any[];
+    [key: string]: AppwriteCustomer[];
   }>({});
-    const [flatCustomers, setFlatCustomers] = useState<any[]>([]);
-  const [recentCustomers, setRecentCustomers] = useState<any[]>([]);
+  const [flatCustomers, setFlatCustomers] = useState<AppwriteCustomer[]>([]);
+  const [recentCustomers, setRecentCustomers] = useState<AppwriteCustomer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const inputRef = useRef<TextInput>(null);
   const [totalCustomers, setTotalCustomers] = useState(0);
+  const inputRef = useRef<TextInput>(null);
 
   const hasActiveFilters =
-      customersSelectedInterestedIns.length > 0 ||
-      customersSelectedInterestStatuses.length > 0 ||
-      !!customersSortBy || customersFromDate?.isValid() || customersToDate?.isValid();
+    customersSelectedInterestedIns.length > 0 ||
+    customersSelectedInterestStatuses.length > 0 ||
+    !!customersSortBy || 
+    customersFromDate?.isValid() || 
+    customersToDate?.isValid();
 
   useEffect(() => {
-      if (consultantData?.scans) {
-          // Sort scans by creation date in ascending order (oldest first)
-          const sortedScans = [...consultantData.scans].sort((a, b) =>
-              dayjs(a.$createdAt).unix() - dayjs(b.$createdAt).unix()
-          );
+    if (userData?.scans) {
+      // Sort scans by creation date in ascending order (oldest first)
+      const sortedScans = [...userData.scans].sort((a, b) =>
+        dayjs(a.$createdAt || '').unix() - dayjs(b.$createdAt || '').unix()
+      );
 
-          const uniqueCustomers = new Set();
-          const customersMap = new Map();
+      const uniqueCustomers = new Set<string>();
+      const customersMap = new Map<string, AppwriteCustomer>();
 
-          // Process scans in chronological order
-          sortedScans.forEach((scan) => {
-            if (scan.customers && !uniqueCustomers.has(scan.customers.$id)) {
-              uniqueCustomers.add(scan.customers.$id);
-              customersMap.set(scan.customers.$id, {
-                ...scan.customers,
-                lastScanned: scan.$createdAt,
-                scanCount: 1,
-                interestStatus: scan.interest_status,
-                interestedIn: scan.interested_in,
-              });
-            } else if (scan.customers) {
-              const existing = customersMap.get(scan.customers.$id);
-              const currentScanDate = scan.$createdAt;
-              const existingLastScanned = existing.lastScanned;
-
-              // Determine if current scan is newer
-              const isNewerScan = dayjs(currentScanDate).isAfter(existingLastScanned);
-
-              // Update interest status only if current scan is newer
-              customersMap.set(scan.customers.$id, {
-                ...existing,
-                scanCount: existing.scanCount + 1,
-                lastScanned: isNewerScan ? currentScanDate : existingLastScanned,
-                interestStatus: isNewerScan ? scan.interest_status : existing.interestStatus,
-                interestedIn: isNewerScan ? scan.interested_in : existing.interestedIn,
-              });
-            }
+      // Process scans in chronological order
+      sortedScans.forEach((scan) => {
+        const customer = scan.customers as AppwriteCustomer;
+        if (customer && !uniqueCustomers.has(customer.$id)) {
+          uniqueCustomers.add(customer.$id);
+          customersMap.set(customer.$id, {
+            ...customer,
+            lastScanned: scan.$createdAt || '',
+            scanCount: 1,
+            interestStatus: scan.interestStatus,
+            interestedIn: scan.interestedIn,
           });
+        } else if (customer) {
+          const existing = customersMap.get(customer.$id);
+          if (existing) {
+            const currentScanDate = scan.$createdAt || '';
+            const existingLastScanned = existing.lastScanned || '';
 
-            // Convert map to array and filter based on search query
-          let customersArray = Array.from(customersMap.values());
+            // Determine if current scan is newer
+            const isNewerScan = dayjs(currentScanDate).isAfter(existingLastScanned);
 
-            // Date range filtering
-            if (customersFromDate?.isValid() || customersToDate?.isValid()) {
-                customersArray = customersArray.filter(customer => {
-                    const lastScannedDate = dayjs(customer.lastScanned);
-                     if (customersFromDate?.isValid() && lastScannedDate.isBefore(customersFromDate, 'day')) return false;
-                      if (customersToDate?.isValid() && lastScannedDate.isAfter(customersToDate, 'day')) return false;
-                    return true;
-            });
-        }
-
-          if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            customersArray = customersArray.filter(customer => {
-              const searchFields = [
-                customer.name?.toLowerCase(),
-                customer.phone?.toLowerCase(),
-                customer.email?.toLowerCase(),
-                  customer.interestStatus?.toLowerCase(),
-                  customer.interestedIn?.toLowerCase(),
-              ];
-              return searchFields.some(field => field?.includes(query));
+            // Update interest status only if current scan is newer
+            customersMap.set(customer.$id, {
+              ...existing,
+              scanCount: (existing.scanCount || 0) + 1,
+              lastScanned: isNewerScan ? currentScanDate : existingLastScanned,
+              interestStatus: isNewerScan ? scan.interestStatus : existing.interestStatus,
+              interestedIn: isNewerScan ? scan.interestedIn : existing.interestedIn,
             });
           }
-           customersArray =  customersArray.filter(customer => {
-          let include = true;
-              if (
-          customersSelectedInterestedIns.length > 0 &&
-          !customersSelectedInterestedIns.includes(customer.interestedIn)
-        ) {
-            include = false;
+        }
+      });
 
+      // Convert map to array and filter based on search query
+      let customersArray = Array.from(customersMap.values());
+
+      // Date range filtering
+      if (customersFromDate?.isValid() || customersToDate?.isValid()) {
+        customersArray = customersArray.filter(customer => {
+          const lastScannedDate = dayjs(customer.lastScanned);
+          if (customersFromDate?.isValid() && lastScannedDate.isBefore(customersFromDate, 'day')) return false;
+          if (customersToDate?.isValid() && lastScannedDate.isAfter(customersToDate, 'day')) return false;
+          return true;
+        });
+      }
+
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        customersArray = customersArray.filter(customer => {
+          const searchFields = [
+            customer.name?.toLowerCase(),
+            customer.phone?.toLowerCase(),
+            customer.email?.toLowerCase(),
+            customer.interestStatus?.toLowerCase(),
+            customer.interestedIn?.toLowerCase(),
+          ];
+          return searchFields.some(field => field?.includes(query));
+        });
+      }
+      customersArray = customersArray.filter(customer => {
+        let include = true;
+        if (
+          customersSelectedInterestedIns.length > 0 &&
+          (!customer.interestedIn || !customersSelectedInterestedIns.includes(customer.interestedIn))
+        ) {
+          include = false;
         }
 
         if (
           customersSelectedInterestStatuses.length > 0 &&
-          !customersSelectedInterestStatuses.includes(customer.interestStatus)
+          (!customer.interestStatus || !customersSelectedInterestStatuses.includes(customer.interestStatus))
         ) {
-             include = false;
+          include = false;
         }
-              return include;
-        });
-          const sortedCustomers = [...customersArray].sort((a, b) => {
-            if (!customersSortBy) return 0;
-            const safeDate = (date: string | null | undefined): number => {
-              return date ? dayjs(date).valueOf() : 0;
-            };
+        return include;
+      });
+      const sortedCustomers = [...customersArray].sort((a, b) => {
+        if (!customersSortBy) return 0;
+        const safeDate = (date: string | null | undefined): number => {
+          return date ? dayjs(date).valueOf() : 0;
+        };
 
-            switch (customersSortBy) {
-              case "a_to_z": return (a.name || '').localeCompare(b.name || '');
-              case "z_to_a": return (b.name || '').localeCompare(a.name || '');
-              case "scans_low_to_high": return a.scanCount - b.scanCount;
-              case "scans_high_to_low": return b.scanCount - a.scanCount;
-              case "last_scanned_newest_to_oldest": return safeDate(b.lastScanned) - safeDate(a.lastScanned);
-              case "last_scanned_oldest_to_newest": return safeDate(a.lastScanned) - safeDate(b.lastScanned);
-              default: return 0;
-            }
-          });
+        switch (customersSortBy) {
+          case "a_to_z": return (a.name || '').localeCompare(b.name || '');
+          case "z_to_a": return (b.name || '').localeCompare(a.name || '');
+          case "scans_low_to_high": return (a.scanCount || 0) - (b.scanCount || 0);
+          case "scans_high_to_low": return (b.scanCount || 0) - (a.scanCount || 0);
+          case "last_scanned_newest_to_oldest": return safeDate(b.lastScanned) - safeDate(a.lastScanned);
+          case "last_scanned_oldest_to_newest": return safeDate(a.lastScanned) - safeDate(b.lastScanned);
+          default: return 0;
+        }
+      });
 
-          setFlatCustomers(sortedCustomers);
+      setFlatCustomers(sortedCustomers);
 
-          if(!customersSortBy){
-            // Group customers by first letter of name
-          const grouped = customersArray.reduce((acc, customer) => {
-            const firstLetter = customer.name?.[0]?.toUpperCase() || '#';
-            if (!acc[firstLetter]) acc[firstLetter] = [];
-            acc[firstLetter].push(customer);
+      if(!customersSortBy){
+        // Group customers by first letter of name
+        const grouped = customersArray.reduce((acc, customer) => {
+          const firstLetter = customer.name?.[0]?.toUpperCase() || '#';
+          if (!acc[firstLetter]) acc[firstLetter] = [];
+          acc[firstLetter].push(customer);
+          return acc;
+        }, {} as { [key: string]: AppwriteCustomer[] });
+
+        // Sort only the GROUP KEYS, not the items within groups
+        const sortedGroups = Object.keys(grouped)
+          .sort()
+          .reduce((acc, key) => {
+            acc[key] = grouped[key]; // ✅ Keep original order
             return acc;
-          }, {} as { [key: string]: any[] });
+          }, {} as { [key: string]: AppwriteCustomer[] });
 
-          // Sort only the GROUP KEYS, not the items within groups
-          const sortedGroups = Object.keys(grouped)
-            .sort()
-            .reduce((acc, key) => {
-              acc[key] = grouped[key]; // ✅ Keep original order
-              return acc;
-            }, {} as { [key: string]: any[] });
-
-            setGroupedCustomers(sortedGroups);
-          }
-          else{
-               setGroupedCustomers({});
-          }
-
-           setTotalCustomers(customersArray.length);
-
-          // Get recent customers (last 3 scanned)
-            const sortedRecent = customersArray
-              .sort((a, b) => dayjs(b.lastScanned).unix() - dayjs(a.lastScanned).unix())
-              .slice(0, 3);
-            setRecentCustomers(sortedRecent);
+        setGroupedCustomers(sortedGroups);
       }
-  }, [consultantData, searchQuery, customersSelectedInterestedIns, customersSelectedInterestStatuses, customersSortBy, customersFromDate, customersToDate]);
+      else{
+        setGroupedCustomers({});
+      }
+
+      setTotalCustomers(customersArray.length);
+
+      // Get recent customers (last 3 scanned)
+      const sortedRecent = customersArray
+        .sort((a, b) => dayjs(b.lastScanned).unix() - dayjs(a.lastScanned).unix())
+        .slice(0, 3);
+      setRecentCustomers(sortedRecent);
+    }
+  }, [userData, searchQuery, customersSelectedInterestedIns, customersSelectedInterestStatuses, customersSortBy, customersFromDate, customersToDate]);
 
   useEffect(() => {
     if (isSearching) {
@@ -203,19 +232,20 @@ const CustomersScreen = () => {
     }
   }, [isSearching]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return "No date";
     return dayjs(dateString).format("D MMM YYYY h:mm A");
   };
 
-    const getInitials = (name: string) => {
-        if (!name) return "Cu";
-        const firstName = name.split(" ")[0];
-        const cleaned = firstName.replace(/[^a-zA-Z]/g, "");
-        return (cleaned.slice(0, 2) || "Cu")
-            .split("")
-            .map((c, i) => (i === 1 ? c.toLowerCase() : c.toUpperCase()))
-            .join("");
-    };
+  const getInitials = (name: string | undefined): string => {
+    if (!name) return "Cu";
+    const firstName = name.split(" ")[0];
+    const cleaned = firstName.replace(/[^a-zA-Z]/g, "");
+    return (cleaned.slice(0, 2) || "Cu")
+      .split("")
+      .map((c, i) => (i === 1 ? c.toLowerCase() : c.toUpperCase()))
+      .join("");
+  };
 
   const getFormattedDateRange = () => {
     if (customersFromDate?.isValid() && customersToDate?.isValid()) {
@@ -223,16 +253,16 @@ const CustomersScreen = () => {
     }
 
     if(customersFromDate?.isValid()) {
-        return `(${customersFromDate.format("DD MMM")})`
+      return `(${customersFromDate.format("DD MMM")})`
     }
     if(customersToDate?.isValid()) {
-        return `(${customersToDate.format("DD MMM")})`
+      return `(${customersToDate.format("DD MMM")})`
     }
 
     return "";
   }
 
-  if (status === "loading") {
+  if (loading) {
     return (
       <View className="h-screen z-10 justify-center items-center bg-white">
         <ActivityIndicator size="large" color="#3D12FA" />
@@ -312,9 +342,9 @@ const CustomersScreen = () => {
                 >
                   <View className="items-center flex-row gap-3">
                     <View className="w-9 h-9 bg-color1 rounded-full items-center justify-center">
-                      {customer?.['profile-icon'] ? (
+                      {customer?.profileImage ? (
                         <Image
-                          source={{ uri: customer['profile-icon'] }}
+                          source={{ uri: customer.profileImage }}
                           className="w-9 h-9 rounded-full"
                         />
                       ) : (
@@ -434,9 +464,9 @@ const CustomerCard = ({
   getInitials, 
   formatDate 
 }: { 
-  customer: any; 
-  getInitials: (name: string) => string;
-  formatDate: (date: string) => string;
+  customer: AppwriteCustomer; 
+  getInitials: (name: string | undefined) => string;
+  formatDate: (date: string | undefined) => string;
 }) => {
   const dispatch = useDispatch();
   
@@ -450,9 +480,9 @@ const CustomerCard = ({
     >
       <View className="items-center flex-row gap-3">
         <View className="w-9 h-9 bg-color1 rounded-full items-center justify-center">
-          {customer?.['profile-icon'] ? (
+          {customer?.profileImage ? (
             <Image
-              source={{ uri: customer['profile-icon'] }}
+              source={{ uri: customer.profileImage }}
               className="w-9 h-9 rounded-full"
             />
           ) : (

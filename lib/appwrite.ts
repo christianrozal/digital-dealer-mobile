@@ -2,12 +2,13 @@ import { Client, Databases, Account } from "appwrite";
 
 const projectId = "6780c774003170c68252";
 const databaseId ="67871d61002bf7e6bc9e";
-const customersId = "678724210037c2b3b179";
-const usersId = "679daed50032a47da1e8";
-const dealershipLevel1Id = "679daae60025d4b49989";
-const dealershipLevel2Id = "679daafa0037dc5dd246"
-const dealershipLevel3Id = "679dab040015a9a5404d" 
+const customersId = "679ed05e000d929edbe8";
+const usersId = "679ecbe80015c69a3d6e";
+const dealershipLevel1Id = "679ecb1b000c23a061e6";
+const dealershipLevel2Id = "679ecb2b000cb12417fb"
+const dealershipLevel3Id = "679ecb35001d764538f6" 
 const appointmentsId = "679e2e5100067db83558" 
+const bucketId = '679a6a24003b707de5c0';
 
 const client = new Client()
     .setEndpoint("https://cloud.appwrite.io/v1")
@@ -27,5 +28,6 @@ export {
     dealershipLevel3Id,
     customersId,
     usersId,
-    appointmentsId
+    appointmentsId,
+    bucketId
 };

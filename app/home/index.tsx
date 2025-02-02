@@ -12,15 +12,16 @@ import { showActivitiesFilter } from "@/lib/store/uiSlice";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { router } from "expo-router";
 import dayjs from "dayjs";
+import { setCurrentScan, setCurrentCustomer } from '@/lib/store/currentSlice';
 
 interface Scan {
   $id: string;
   $createdAt: string;
   customers?: any;
-  interest_status?: string;
-  interested_in?: string;
-  follow_up_date?: string;
-  scan_count?: number;
+  interestStatus?: string;
+  interestedIn?: string;
+  followUpDate?: string;
+  scanCount?: number;
 }
 
 interface UserData {
@@ -87,8 +88,8 @@ const HomeScreen = () => {
           scan.customers?.name?.toLowerCase(),
           scan.customers?.phone?.toLowerCase(),
           scan.customers?.email?.toLowerCase(),
-          scan.interest_status?.toLowerCase(),
-          scan.interested_in?.toLowerCase(),
+          scan.interestStatus?.toLowerCase(),
+          scan.interestedIn?.toLowerCase(),
         ];
         if (!searchFields.some((field) => field?.includes(query))) {
           return false;
@@ -98,14 +99,14 @@ const HomeScreen = () => {
       // Interest filters
       if (
         activitiesSelectedInterestedIns.length > 0 &&
-        !activitiesSelectedInterestedIns.includes(scan.interested_in || '')
+        !activitiesSelectedInterestedIns.includes(scan.interestedIn || '')
       ) {
         return false;
       }
 
       if (
         activitiesSelectedInterestStatuses.length > 0 &&
-        !activitiesSelectedInterestStatuses.includes(scan.interest_status || '')
+        !activitiesSelectedInterestStatuses.includes(scan.interestStatus || '')
       ) {
         return false;
       }
@@ -132,9 +133,9 @@ const HomeScreen = () => {
         case "z_to_a":
           return (b.customers?.name || '').localeCompare(a.customers?.name || '');
         case "scans_low_to_high":
-          return (a.scan_count || 0) - (b.scan_count || 0);
+          return (a.scanCount || 0) - (b.scanCount || 0);
         case "scans_high_to_low":
-          return (b.scan_count || 0) - (a.scan_count || 0);
+          return (b.scanCount || 0) - (a.scanCount || 0);
         case "last_scanned_newest_to_oldest":
           return safeDate(b.$createdAt) - safeDate(a.$createdAt);
         case "last_scanned_oldest_to_newest":
@@ -262,10 +263,27 @@ const HomeScreen = () => {
                   ...scan.customers,
                   lastScanned: scan.$createdAt,
                   scanCount: 1,
-                  interestStatus: scan.interest_status,
-                  interestedIn: scan.interested_in
+                  interestStatus: scan.interestStatus,
+                  interestedIn: scan.interestedIn
                 };
+
+                console.log('Selected from Home Screen:', {
+                  scan: {
+                    id: scan.$id,
+                    createdAt: scan.$createdAt,
+                    interestStatus: scan.interestStatus,
+                    interestedIn: scan.interestedIn
+                  },
+                  customer: {
+                    id: scan.customers?.$id,
+                    data: scan.customers
+                  }
+                });
+
                 dispatch(setSelectedCustomer(customerForActivity));
+                dispatch(setCurrentScan(scan.$id));
+                dispatch(setCurrentCustomer(scan.customers?.$id));
+                
                 router.push("/home/customers/customer-details");
               }}
             >
@@ -291,31 +309,31 @@ const HomeScreen = () => {
                   <View className="flex-row gap-1">
                     <Text
                       className={`rounded-full text-[10px] border font-medium px-2 py-0.5 ${
-                        scan.interest_status === "Hot"
+                        scan.interestStatus === "Hot"
                           ? "border-red-400 bg-red-100 text-red-600"
-                          : scan.interest_status === "Warm"
+                          : scan.interestStatus === "Warm"
                           ? "border-orange-400 bg-orange-100 text-orange-600"
-                          : scan.interest_status === "Cold"
+                          : scan.interestStatus === "Cold"
                           ? "border-gray-400 bg-gray-100 text-gray-600"
                           : "border-violet-400 bg-violet-100 text-violet-600"
                       }`}
                     >
-                      {scan.interest_status}
+                      {scan.interestStatus}
                     </Text>
                     <Text
                       className={`rounded-full text-[10px] border font-medium px-2 py-0.5 ${
-                        scan.interested_in === "Buying"
+                        scan.interestedIn === "Buying"
                           ? "border-green-400 bg-green-100 text-green-600"
-                          : scan.interested_in === "Selling"
+                          : scan.interestedIn === "Selling"
                           ? "border-blue-400 bg-blue-100 text-blue-600"
-                          : scan.interested_in === "Financing"
+                          : scan.interestedIn === "Financing"
                           ? "border-pink-400 bg-pink-100 text-pink-600"
-                          : scan.interested_in === "Bought"
+                          : scan.interestedIn === "Bought"
                           ? "border-violet-400 bg-violet-100 text-violet-600"
                           : "border-gray-400 bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {scan.interested_in}
+                      {scan.interestedIn}
                     </Text>
                   </View>
                 </View>
@@ -344,7 +362,7 @@ const HomeScreen = () => {
                   <View className="flex-row gap-1 items-center bg-color11 rounded py-0.5 px-1.5">
                     <CalendarIcon width={15} height={15} stroke="white" />
                     <Text className="text-[10px] text-white">
-                      {formatDate(scan.follow_up_date)}
+                      {formatDate(scan.followUpDate)}
                     </Text>
                   </View>
                 </View>

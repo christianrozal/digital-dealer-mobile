@@ -2,66 +2,77 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface CurrentState {
-  currentRooftop: string | null; // Now string | null for IDs
-  currentConsultant: string | null; // Now string | null for IDs
-  currentCustomer: string | null; // Now string | null for IDs
-  currentScan: string | null; // New state for currentScan ID
+  currentDealershipLevel2: string | null;
+  currentDealershipLevel3: string | null;
+  currentConsultant: string | null;
+  currentCustomer: string | null;
+  currentScan: string | null;
 }
 
 const initialState: CurrentState = {
-  currentRooftop: null,
+  currentDealershipLevel2: null,
+  currentDealershipLevel3: null,
   currentConsultant: null,
   currentCustomer: null,
-  currentScan: null, // Initialize currentScan to null
+  currentScan: null,
 };
 
 export const currentSlice = createSlice({
   name: 'current',
   initialState,
   reducers: {
-    setCurrentRooftop: (state, action: PayloadAction<string | null>) => { // PayloadAction<string | null>
-      state.currentRooftop = action.payload;
+    setCurrentDealershipLevel2: (state, action: PayloadAction<string | null>) => {
+      state.currentDealershipLevel2 = action.payload;
     },
-    resetCurrentRooftop: (state) => {
-      state.currentRooftop = null;
+    resetCurrentDealershipLevel2: (state) => {
+      state.currentDealershipLevel2 = null;
     },
-    setCurrentConsultant: (state, action: PayloadAction<string | null>) => { // PayloadAction<string | null>
+    setCurrentDealershipLevel3: (state, action: PayloadAction<string | null>) => {
+      state.currentDealershipLevel3 = action.payload;
+    },
+    resetCurrentDealershipLevel3: (state) => {
+      state.currentDealershipLevel3 = null;
+    },
+    setCurrentConsultant: (state, action: PayloadAction<string | null>) => {
       state.currentConsultant = action.payload;
     },
     resetCurrentConsultant: (state) => {
       state.currentConsultant = null;
     },
-    setCurrentCustomer: (state, action: PayloadAction<string | null>) => { // PayloadAction<string | null>
+    setCurrentCustomer: (state, action: PayloadAction<string | null>) => {
       state.currentCustomer = action.payload;
     },
     resetCurrentCustomer: (state) => {
       state.currentCustomer = null;
     },
-    setCurrentScan: (state, action: PayloadAction<string | null>) => { // New reducer for currentScan
+    setCurrentScan: (state, action: PayloadAction<string | null>) => {
       state.currentScan = action.payload;
     },
-    resetCurrentScan: (state) => { // New reducer to reset currentScan
+    resetCurrentScan: (state) => {
       state.currentScan = null;
     },
-    resetCurrentAll: (state) => { // Optional: Reducer to reset all current states
-      state.currentRooftop = null;
+    resetCurrentAll: (state) => {
+      state.currentDealershipLevel2 = null;
+      state.currentDealershipLevel3 = null;
       state.currentConsultant = null;
       state.currentCustomer = null;
-      state.currentScan = null; // Reset currentScan in resetAll as well
+      state.currentScan = null;
     },
   },
 });
 
 export const {
-  setCurrentRooftop,
-  resetCurrentRooftop,
+  setCurrentDealershipLevel2,
+  resetCurrentDealershipLevel2,
+  setCurrentDealershipLevel3,
+  resetCurrentDealershipLevel3,
   setCurrentConsultant,
   resetCurrentConsultant,
   setCurrentCustomer,
   resetCurrentCustomer,
-  setCurrentScan, // Export the new setCurrentScan action
-  resetCurrentScan, // Export the new resetCurrentScan action
-  resetCurrentAll, // Export the resetAll action as well
+  setCurrentScan,
+  resetCurrentScan,
+  resetCurrentAll,
 } = currentSlice.actions;
 
 export default currentSlice.reducer;
