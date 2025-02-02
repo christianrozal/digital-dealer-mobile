@@ -2,6 +2,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface CurrentState {
+  currentDealershipLevel1: string | null;
   currentDealershipLevel2: string | null;
   currentDealershipLevel3: string | null;
   currentConsultant: string | null;
@@ -10,6 +11,7 @@ export interface CurrentState {
 }
 
 const initialState: CurrentState = {
+  currentDealershipLevel1: null,
   currentDealershipLevel2: null,
   currentDealershipLevel3: null,
   currentConsultant: null,
@@ -21,6 +23,12 @@ export const currentSlice = createSlice({
   name: 'current',
   initialState,
   reducers: {
+    setCurrentDealershipLevel1: (state, action: PayloadAction<string | null>) => {
+      state.currentDealershipLevel1 = action.payload;
+    },
+    resetCurrentDealershipLevel1: (state) => {
+      state.currentDealershipLevel1 = null;
+    },
     setCurrentDealershipLevel2: (state, action: PayloadAction<string | null>) => {
       state.currentDealershipLevel2 = action.payload;
     },
@@ -52,6 +60,7 @@ export const currentSlice = createSlice({
       state.currentScan = null;
     },
     resetCurrentAll: (state) => {
+      state.currentDealershipLevel1 = null;
       state.currentDealershipLevel2 = null;
       state.currentDealershipLevel3 = null;
       state.currentConsultant = null;
@@ -62,6 +71,8 @@ export const currentSlice = createSlice({
 });
 
 export const {
+  setCurrentDealershipLevel1,
+  resetCurrentDealershipLevel1,
   setCurrentDealershipLevel2,
   resetCurrentDealershipLevel2,
   setCurrentDealershipLevel3,

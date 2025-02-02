@@ -20,6 +20,7 @@ import CustomersFilter from "@/components/customersFilter";
 import { hideCustomersFilter, showCustomersFilter } from "@/lib/store/uiSlice";
 import { router } from "expo-router";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
+import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
 import { useFocusEffect } from "@react-navigation/native";
 import AddIcon from "@/components/svg/addIcon";
 
@@ -32,6 +33,7 @@ interface AppwriteCustomer {
   profileImage?: string;
   profileImageId?: string;
   lastScanned?: string;
+  lastScanId?: string;
   scanCount?: number;
   interestStatus?: string;
   interestedIn?: string;
@@ -83,8 +85,8 @@ const CustomersScreen = () => {
     customersSelectedInterestedIns.length > 0 ||
     customersSelectedInterestStatuses.length > 0 ||
     !!customersSortBy || 
-    customersFromDate?.isValid() || 
-    customersToDate?.isValid();
+    (customersFromDate && dayjs(customersFromDate).isValid()) || 
+    (customersToDate && dayjs(customersToDate).isValid());
 
   useEffect(() => {
     if (userData?.scans) {
@@ -104,6 +106,7 @@ const CustomersScreen = () => {
           customersMap.set(customer.$id, {
             ...customer,
             lastScanned: scan.$createdAt || '',
+            lastScanId: scan.$id,
             scanCount: 1,
             interestStatus: scan.interestStatus,
             interestedIn: scan.interestedIn,
@@ -122,6 +125,7 @@ const CustomersScreen = () => {
               ...existing,
               scanCount: (existing.scanCount || 0) + 1,
               lastScanned: isNewerScan ? currentScanDate : existingLastScanned,
+              lastScanId: isNewerScan ? scan.$id : existing.lastScanId,
               interestStatus: isNewerScan ? scan.interestStatus : existing.interestStatus,
               interestedIn: isNewerScan ? scan.interestedIn : existing.interestedIn,
             });
@@ -133,11 +137,11 @@ const CustomersScreen = () => {
       let customersArray = Array.from(customersMap.values());
 
       // Date range filtering
-      if (customersFromDate?.isValid() || customersToDate?.isValid()) {
+      if ((customersFromDate && dayjs(customersFromDate).isValid()) || (customersToDate && dayjs(customersToDate).isValid())) {
         customersArray = customersArray.filter(customer => {
           const lastScannedDate = dayjs(customer.lastScanned);
-          if (customersFromDate?.isValid() && lastScannedDate.isBefore(customersFromDate, 'day')) return false;
-          if (customersToDate?.isValid() && lastScannedDate.isAfter(customersToDate, 'day')) return false;
+          if (customersFromDate && dayjs(customersFromDate).isValid() && lastScannedDate.isBefore(dayjs(customersFromDate), 'day')) return false;
+          if (customersToDate && dayjs(customersToDate).isValid() && lastScannedDate.isAfter(dayjs(customersToDate), 'day')) return false;
           return true;
         });
       }
@@ -248,15 +252,15 @@ const CustomersScreen = () => {
   };
 
   const getFormattedDateRange = () => {
-    if (customersFromDate?.isValid() && customersToDate?.isValid()) {
-      return `(${customersFromDate.format("DD MMM")} - ${customersToDate.format("DD MMM")})`;
+    if (customersFromDate && customersToDate && dayjs(customersFromDate).isValid() && dayjs(customersToDate).isValid()) {
+      return `(${dayjs(customersFromDate).format("DD MMM")} - ${dayjs(customersToDate).format("DD MMM")})`;
     }
 
-    if(customersFromDate?.isValid()) {
-      return `(${customersFromDate.format("DD MMM")})`
+    if (customersFromDate && dayjs(customersFromDate).isValid()) {
+      return `(${dayjs(customersFromDate).format("DD MMM")})`;
     }
-    if(customersToDate?.isValid()) {
-      return `(${customersToDate.format("DD MMM")})`
+    if (customersToDate && dayjs(customersToDate).isValid()) {
+      return `(${dayjs(customersToDate).format("DD MMM")})`;
     }
 
     return "";
@@ -312,14 +316,14 @@ const CustomersScreen = () => {
               {isSearching ? (
                 <CloseIcon width={28} height={28} />
               ) : (
-                <SearchIcon width={28} height={28} stroke="#9EA5AD" />
+                <SearchIcon width={28} height={28} />
               )}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => dispatch(showCustomersFilter())}
               className="relative"
             >
-              <FilterIcon showCircle={hasActiveFilters ? true : false} stroke="#9EA5AD"/>
+              <FilterIcon showCircle={hasActiveFilters ? true : false} />
             </TouchableOpacity>
           </View>
         </View>
@@ -336,7 +340,18 @@ const CustomersScreen = () => {
                   key={customer.$id}
                   className="p-3 mt-2 rounded-md flex-row justify-between items-center bg-white"
                   onPress={() => {
-                    dispatch(setSelectedCustomer(customer));
+                    const customerForActivity = {
+                      ...customer,
+                      lastScanned: customer.lastScanned,
+                      scanCount: customer.scanCount,
+                      interestStatus: customer.interestStatus,
+                      interestedIn: customer.interestedIn
+                    };
+
+                    dispatch(setSelectedCustomer(customerForActivity));
+                    dispatch(setCurrentScan(customer.lastScanId || null));
+                    dispatch(setCurrentCustomer(customer.$id));
+                    
                     router.push("/home/customers/customer-details");
                   }}
                 >
@@ -448,7 +463,7 @@ const CustomersScreen = () => {
             >
               <View className="flex-1" />
             </TouchableOpacity>
-            <View className="h-2/3 bg-white rounded-t-3xl p-5">
+            <View className=" bg-white rounded-t-3xl" style={{ height: "70%", padding: 28 }}>
               <CustomersFilter />
             </View>
           </View>
@@ -474,7 +489,18 @@ const CustomerCard = ({
     <TouchableOpacity
       className="p-3 mt-2 rounded-md flex-row justify-between items-center bg-white"
       onPress={() => {
-        dispatch(setSelectedCustomer(customer));
+        const customerForActivity = {
+          ...customer,
+          lastScanned: customer.lastScanned,
+          scanCount: customer.scanCount,
+          interestStatus: customer.interestStatus,
+          interestedIn: customer.interestedIn
+        };
+
+        dispatch(setSelectedCustomer(customerForActivity));
+        dispatch(setCurrentScan(customer.lastScanId || null));
+        dispatch(setCurrentCustomer(customer.$id));
+        
         router.push("/home/customers/customer-details");
       }}
     >

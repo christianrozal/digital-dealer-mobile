@@ -20,7 +20,6 @@ interface Customer {
    name?: string;
    email?: string;
    phone?: string;
-   'profile-icon'?: string;
    profileImage?: string;
    interestStatus?: string;
    interestedIn?: string;
@@ -125,11 +124,23 @@ const SelectedCustomerScreen = () => {
             >
               <EditIcon /> <Text className="text-xs text-gray-300">Edit...</Text>
             </TouchableOpacity>
-            <View className="bg-white rounded-md justify-center items-center p-5 shadow-lg z-0">
+            <View
+            className="bg-white rounded-md justify-center items-center"
+             style={{
+                                padding: 20,
+                                shadowColor: "#9a9a9a",
+                                shadowOffset: {
+                                    width: 0,
+                                    height: 4,
+                                },
+                                shadowOpacity: 0.25,
+                                shadowRadius: 9.4,
+                                elevation: 4,
+                            }}>
               <View className="bg-color1 rounded-full items-center justify-center w-[100px] h-[100px]">
-                {(customerData as any)['profile-icon'] ? (
+                {customerData.profileImage ? (
                   <Image
-                    source={{ uri: (customerData as any)['profile-icon'] }}
+                    source={{ uri: customerData.profileImage }}
                     className="w-[100px] h-[100px] rounded-full"
                   />
                 ) : (

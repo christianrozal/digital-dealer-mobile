@@ -1,54 +1,106 @@
 import { View, Text, TouchableOpacity, Image, ScrollView } from "react-native";
 import React, { useState, useEffect } from "react";
 import { Link, router } from "expo-router";
-import { Picker } from "@react-native-picker/picker";
 import ButtonComponent from "@/components/button";
-import { useSelector } from "react-redux";
-import { Avatar } from "react-native-paper";
+import { useSelector, useDispatch } from "react-redux";
 import * as appwrite from "react-native-appwrite";
 import { RootState } from "@/lib/store/store";
 import BackArrowIcon from "@/components/svg/backArrow";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ChevronDownIcon from "@/components/svg/chevronDown";
+import { databases, databaseId, usersId, dealershipLevel2Id, dealershipLevel3Id, scansId } from "@/lib/appwrite";
+import { Query } from "appwrite";
+import { setSelectedCustomer } from "@/lib/store/customerSlice";
+import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
 
-// Define a specific interface for the scan object
+// Define interfaces at the top of the file
+interface User {
+  $id: string;
+  name: string;
+  [key: string]: any; // For other properties
+}
+
 interface Scan {
-    consultants?: {
-        name?: string;
-    } | null;
-  [key: string]: any; // Allows other properties not explicitly declared
+    $id: string;
+    users: string; // This is the user ID
+    $createdAt: string;
+    user?: { // This is the expanded user data
+      $id: string;
+      name: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
 }
 
 const CustomerAssignmentScreen = () => {
-  const loggedInConsultantName = useSelector(
-    (state: RootState) => state.user.name
-  );
-  const loggedInConsultantData = useSelector( // Get full consultant data
-    (state: RootState) => state.consultant.data
-  );
+  const userData = useSelector((state: RootState) => state.user.data);
+  const currentDealershipLevel2 = useSelector((state: RootState) => state.current.currentDealershipLevel2);
+  const currentDealershipLevel3 = useSelector((state: RootState) => state.current.currentDealershipLevel3);
   const [selectedName, setSelectedName] = useState<string | null>(
-    loggedInConsultantName || null
-  ); // Initialize with logged-in name
-  const customer = useSelector((state: RootState) => state.customer.selectedCustomer); // Access customer from customerSlice
-  const selectedRooftopData = useSelector((state: RootState) => state.rooftop.selectedRooftopData); // Access rooftop data
-  const [allConsultants, setAllConsultants] = useState<any[]>([]); // State to hold consultant list
+    userData?.name || null
+  );
+  const customer = useSelector((state: RootState) => state.customer.selectedCustomer);
+  const [allUsers, setAllUsers] = useState<any[]>([]); // State to hold users list
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
-    if (selectedRooftopData?.consultants) {
-      setAllConsultants(selectedRooftopData.consultants); // Set consultants from rooftop data
-    } else {
-      // Fallback in case rooftop data or consultants are not available.
-      // You might want to handle this case differently, e.g., fetch consultants separately.
-      setAllConsultants([
-        { name: "Alice Johnson", id: "3" },
-        { name: "Bob Williams", id: "4" },
-        { name: "Charlie Brown", id: "5" },
-        { name: "David Davis", id: "6" },
-      ]);
-    }
-  }, [selectedRooftopData]);
+    const fetchDealershipUsers = async () => {
+      try {
+        if (!userData || !userData.$id) {
+          console.error("No user data or user ID available");
+          return;
+        }
 
+        console.log("Current user data:", userData);
+        console.log("Current dealership levels:", { currentDealershipLevel2, currentDealershipLevel3 });
+        
+        // Determine which dealership level to fetch
+        let collectionId: string;
+        let dealershipId: string | null;
+
+        if (currentDealershipLevel3) {
+          collectionId = dealershipLevel3Id;
+          dealershipId = currentDealershipLevel3;
+        } else if (currentDealershipLevel2) {
+          collectionId = dealershipLevel2Id;
+          dealershipId = currentDealershipLevel2;
+        } else {
+          console.error("No dealership level found");
+          return;
+        }
+
+        console.log(`Fetching dealership from collection ${collectionId}:`, dealershipId);
+
+        // First, fetch the dealership document
+        const dealershipResponse = await databases.getDocument(
+          databaseId,
+          collectionId,
+          dealershipId
+        );
+
+        console.log("Fetched dealership:", dealershipResponse);
+
+        // Get the users from the dealership document and include current user
+        const dealershipUsers = dealershipResponse.users || [];
+        const currentUser = {
+          $id: userData.$id,
+          name: userData.name
+        };
+        
+        // Include current user and other users
+        const allDealershipUsers = [currentUser, ...dealershipUsers.filter((user: User) => user.$id !== userData.$id)];
+        
+        console.log("All dealership users (including current):", allDealershipUsers);
+        setAllUsers(allDealershipUsers);
+      } catch (error) {
+        console.error("Error fetching dealership users:", error);
+        setAllUsers([]); // Reset to empty array on error
+      }
+    };
+
+    fetchDealershipUsers();
+  }, [userData, currentDealershipLevel2, currentDealershipLevel3]);
 
   const getInitials = (name: string) => {
     if (!name) return "Cu";
@@ -61,43 +113,96 @@ const CustomerAssignmentScreen = () => {
   };
 
   const renderNameOptions = () => {
-    return allConsultants.map((consultant) => (
+    // Always show all users in the dropdown
+    return allUsers.map((user) => (
       <TouchableOpacity
-        key={consultant.id || consultant.$id} // Use consultant.id if available, otherwise fallback to consultant.$id
-        className={`px-5 py-3 bg-white`} // Removed conditional background
-        onPress={() => handleNameSelection(consultant.name)}
+        key={user.$id}
+        className={`px-5 py-3 bg-white ${selectedName === user.name ? 'bg-gray-100' : ''}`}
+        onPress={() => handleNameSelection(user.name)}
       >
-        <Text
-          className={`text-sm text-gray-700`} // Removed conditional text color
-        >
-          {consultant.name}
+        <Text className={`text-sm ${selectedName === user.name ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+          {user.name}
         </Text>
       </TouchableOpacity>
     ));
   };
 
   const handleAssign = async () => {
-    console.log("Assigning consultant:", selectedName, "to customer:", customer);
-    router.push("/home/customers/customer-log");
+    try {
+      if (!selectedName || !customer) {
+        console.error("No name selected or no customer data");
+        return;
+      }
+
+      // Find the selected user's full data from allUsers
+      const selectedUser = allUsers.find(user => user.name === selectedName);
+      if (!selectedUser) {
+        console.error("Selected user not found in users list");
+        return;
+      }
+
+      console.log("Assigning user:", selectedUser, "to customer:", customer);
+
+      // Get the latest scan (assuming it's the first one in the array)
+      const latestScan = customer.scans?.[0];
+      if (!latestScan) {
+        console.error("No scan found for this customer");
+        return;
+      }
+
+      // Update the scan with the selected user
+      const updatedScan = await databases.updateDocument(
+        databaseId,
+        scansId,
+        latestScan.$id,
+        {
+          users: selectedUser.$id // Update the users field with the selected user's ID
+        }
+      );
+
+      console.log("Successfully updated scan:", updatedScan);
+
+      // Update the Redux store with the updated scan
+      if (customer.scans) {
+        const updatedCustomer = {
+          ...customer,
+          scans: [
+            {
+              ...latestScan,
+              users: selectedUser.$id,
+              user: selectedUser // Include the expanded user data
+            },
+            ...customer.scans.slice(1)
+          ]
+        };
+        dispatch(setSelectedCustomer(updatedCustomer));
+        dispatch(setCurrentScan(latestScan.$id));
+        dispatch(setCurrentCustomer(customer.$id));
+      }
+
+      router.push("/home/customers/customer-log");
+    } catch (error) {
+      console.error("Error updating scan:", error);
+    }
   };
 
-  const renderPriorConsultants = () => {
+  const renderPriorUsers = () => {
     if (customer?.scans && customer.scans.length > 0) {
-      const priorConsultantNames = new Set<string>(); // Use Set to avoid duplicates
+      const priorUserNames = new Set<string>(); // Use Set to avoid duplicates
 
       customer.scans.forEach((scan: Scan) => {
-        const consultantName = scan.consultants?.name;
-        if (consultantName && consultantName !== loggedInConsultantName) { // Exclude current consultant
-          priorConsultantNames.add(consultantName);
+        // Check both expanded user data and direct user reference
+        if (scan.user?.name && scan.user.name !== userData?.name) {
+          priorUserNames.add(scan.user.name);
         }
       });
 
-      const uniquePriorConsultantNames = Array.from(priorConsultantNames);
+      const uniquePriorUserNames = Array.from(priorUserNames);
 
-      if (uniquePriorConsultantNames.length > 0) {
+      if (uniquePriorUserNames.length > 0) {
         return (
           <View className="placeholder:text-gray-500 bg-color3 rounded-md py-3 px-4 mt-1 w-full">
-            <Text className="text-xs">{uniquePriorConsultantNames.join(", ")}</Text>
+            <Text className="text-xs">{uniquePriorUserNames.join(", ")}</Text>
           </View>
         );
       } else {
@@ -107,7 +212,6 @@ const CustomerAssignmentScreen = () => {
           </View>
         );
       }
-
     } else {
       return (
         <View className="placeholder:text-gray-500 bg-color3 rounded-md py-3 px-4 mt-1 w-full">
@@ -126,10 +230,8 @@ const CustomerAssignmentScreen = () => {
     setIsDropdownOpen(false);
   };
 
-
   return (
     <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
-
       <View>
         {/* Header */}
         <View className="flex-row w-full justify-between items-center">
@@ -187,12 +289,12 @@ const CustomerAssignmentScreen = () => {
           </View>
         </View>
 
-        {/* Consultant List*/}
+        {/* User List*/}
         <View className="mt-6">
           <Text className="text-[10px] text-gray-500">
             Prior Sales Consultant(s)
           </Text>
-          {renderPriorConsultants()}
+          {renderPriorUsers()}
         </View>
 
         {/* Name Select */}

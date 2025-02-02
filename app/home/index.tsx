@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Modal } from "react-native";
 import React, { useRef, useState, useEffect } from "react";
+import dayjs from "dayjs";
 import SearchIcon from "@/components/svg/searchIcon";
 import CloseIcon from "@/components/svg/closeIcon";
 import FilterIcon from "@/components/svg/filterIcon";
@@ -8,11 +9,11 @@ import EmailIcon from "@/components/svg/emailIcon";
 import CalendarIcon from "@/components/svg/calendar";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/lib/store/store";
-import { showActivitiesFilter } from "@/lib/store/uiSlice";
+import { showActivitiesFilter, hideActivitiesFilter } from "@/lib/store/uiSlice";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { router } from "expo-router";
-import dayjs from "dayjs";
 import { setCurrentScan, setCurrentCustomer } from '@/lib/store/currentSlice';
+import ActivitiesFilter from "@/components/activitiesFilter";
 
 interface Scan {
   $id: string;
@@ -70,12 +71,12 @@ const HomeScreen = () => {
   const filteredScans = scans
     ?.filter((scan) => {
       const scanDate = dayjs(scan.$createdAt || '');
-      const hasDateFilter = activitiesFromDate?.isValid() || activitiesToDate?.isValid();
+      const hasDateFilter = (activitiesFromDate && dayjs(activitiesFromDate).isValid()) || (activitiesToDate && dayjs(activitiesToDate).isValid());
 
       // Date range filtering
       if (hasDateFilter) {
-        if (activitiesFromDate?.isValid() && scanDate.isBefore(activitiesFromDate, 'day')) return false;
-        if (activitiesToDate?.isValid() && scanDate.isAfter(activitiesToDate, 'day')) return false;
+        if (activitiesFromDate && scanDate.isBefore(dayjs(activitiesFromDate), 'day')) return false;
+        if (activitiesToDate && scanDate.isAfter(dayjs(activitiesToDate), 'day')) return false;
       } else {
         // Default to today's scans if no date filter is applied
         if (!scan.$createdAt || !isToday(scan.$createdAt)) return false;
@@ -145,12 +146,12 @@ const HomeScreen = () => {
       }
     }) || [];
 
-  const hasActiveFilters =
+  const hasActiveFilters = 
     activitiesSelectedInterestedIns.length > 0 ||
     activitiesSelectedInterestStatuses.length > 0 ||
     !!activitiesSortBy || 
-    activitiesFromDate?.isValid() || 
-    activitiesToDate?.isValid();
+    (activitiesFromDate && dayjs(activitiesFromDate).isValid()) || 
+    (activitiesToDate && dayjs(activitiesToDate).isValid());
 
   const formatDate = (dateString: string | undefined, isLastScanned: boolean = false): string => {
     if (!dateString) return "No date";
@@ -223,13 +224,13 @@ const HomeScreen = () => {
       {/* Today's Summary */}
       <View className="flex-row justify-between rounded-md bg-color3 p-3 mt-5">
         <Text className="text-xs font-bold">
-          {activitiesFromDate && activitiesFromDate.isValid() || activitiesToDate && activitiesToDate.isValid() ? "Date Range" : "Today"}{" "}
+          {(activitiesFromDate && dayjs(activitiesFromDate).isValid()) || (activitiesToDate && dayjs(activitiesToDate).isValid()) ? "Date Range" : "Today"}{" "}
           <Text className="text-[10px] font-normal">
-            {activitiesFromDate && activitiesFromDate.isValid() || activitiesToDate && activitiesToDate.isValid() ? (
-              <>
-                ({activitiesFromDate && activitiesFromDate.isValid() ? activitiesFromDate.format("DD MMM") : ""}
-                {activitiesToDate && activitiesToDate.isValid() ? ` - ${activitiesToDate.format("DD MMM YYYY")}` : ""})
-              </>
+            {(activitiesFromDate && dayjs(activitiesFromDate).isValid()) || (activitiesToDate && dayjs(activitiesToDate).isValid()) ? (
+              <Text>
+                ({activitiesFromDate && dayjs(activitiesFromDate).isValid() ? dayjs(activitiesFromDate).format("DD MMM") : ""}
+                {activitiesToDate && dayjs(activitiesToDate).isValid() ? ` - ${dayjs(activitiesToDate).format("DD MMM YYYY")}` : ""})
+              </Text>
             ) : (
               `(${new Date().toLocaleDateString("en-US", {
                 day: "numeric",
@@ -291,9 +292,9 @@ const HomeScreen = () => {
                 <View className="flex-row justify-between items-start">
                   <View className="flex-row gap-2 items-center">
                     <View className="size-7 bg-color1 rounded-full flex items-center justify-center">
-                      {scan.customers?.['profile-icon'] ? (
+                      {scan.customers?.profileImage ? (
                         <Image
-                          source={{ uri: scan.customers['profile-icon'] }}
+                          source={{ uri: scan.customers.profileImage }}
                           style={{ width: 28, height: 28, borderRadius: 14 }}
                         />
                       ) : (
@@ -379,6 +380,27 @@ const HomeScreen = () => {
           ))}
         </View>
       )}
+
+      {/* Filter Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isActivitiesFilterVisible}
+        onRequestClose={() => dispatch(hideActivitiesFilter())}
+      >
+        <View className="flex-1 justify-end bg-transparent">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={() => dispatch(hideActivitiesFilter())}
+          >
+            <View className="flex-1" />
+          </TouchableOpacity>
+          <View className="bg-white rounded-t-3xl" style={{ padding:28, height: "70%" }}>
+            <ActivitiesFilter />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };

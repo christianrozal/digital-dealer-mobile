@@ -7,15 +7,15 @@ interface UIState {
   activitiesSelectedInterestedIns: string[];
   activitiesSelectedInterestStatuses: string[];
   activitiesSortBy: "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest" | null;
-  activitiesFromDate: dayjs.Dayjs | null;
-  activitiesToDate: dayjs.Dayjs | null;
+  activitiesFromDate: string | null;
+  activitiesToDate: string | null;
 
   isCustomersFilterVisible: boolean;
   customersSelectedInterestedIns: string[];
   customersSelectedInterestStatuses: string[];
   customersSortBy: "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest" | null;
-  customersFromDate: dayjs.Dayjs | null;
-  customersToDate: dayjs.Dayjs | null;
+  customersFromDate: string | null;
+  customersToDate: string | null;
     
   customerUpdateSuccess: boolean;
 }
@@ -84,10 +84,10 @@ const uiSlice = createSlice({
     resetActivitiesSortBy: (state) => {
       state.activitiesSortBy = null;
     },
-    setActivitiesFromDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+    setActivitiesFromDate: (state, action: PayloadAction<string | null>) => {
       state.activitiesFromDate = action.payload;
     },
-    setActivitiesToDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+    setActivitiesToDate: (state, action: PayloadAction<string | null>) => {
       state.activitiesToDate = action.payload;
     },
      resetActivitiesDateRange: (state) => {
@@ -137,10 +137,10 @@ const uiSlice = createSlice({
       resetCustomersSortBy: (state) => {
           state.customersSortBy = null;
       },
-    setCustomersFromDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+    setCustomersFromDate: (state, action: PayloadAction<string | null>) => {
         state.customersFromDate = action.payload;
       },
-    setCustomersToDate: (state, action: PayloadAction<dayjs.Dayjs | null>) => {
+    setCustomersToDate: (state, action: PayloadAction<string | null>) => {
         state.customersToDate = action.payload;
       },
     resetCustomersDateRange: (state) => {

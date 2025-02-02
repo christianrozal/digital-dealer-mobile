@@ -1,8 +1,18 @@
 import ButtonComponent from "@/components/button";
+import LogoutIcon from "@/components/svg/logoutIcon";
+import { account } from "@/lib/appwrite";
 import { router } from "expo-router";
-import { Image, Text, View } from "react-native";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
+  const handleLogout = async () => {
+    try {
+        await account.deleteSession("current");
+        router.replace("/login");
+    } catch (error) {
+        console.log("Logout Error:", error);
+    }
+};
   return (
     <View className="h-screen items-center justify-center px-8">
       <View className="items-center mb-8">
@@ -31,6 +41,13 @@ export default function Index() {
           onPress={() => router.push("/test")}
           className="px-10 mt-10"
         />
+
+<TouchableOpacity className="mt-10" onPress={handleLogout}>
+                                    <View className="flex-row gap-1 items-center">
+                                        <LogoutIcon />
+                                        <Text className="text-xs font-medium">Logout</Text>
+                                    </View>
+                                </TouchableOpacity>
       </View>
     </View>
   );

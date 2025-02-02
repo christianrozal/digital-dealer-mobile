@@ -6,7 +6,7 @@ import ButtonComponent from "@/components/button";
 import { router } from "expo-router";
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedRooftopData } from '@/lib/store/rooftopSlice';
-import { setCurrentDealershipLevel2, setCurrentDealershipLevel3, setCurrentConsultant } from '@/lib/store/currentSlice';
+import { setCurrentDealershipLevel1, setCurrentDealershipLevel2, setCurrentDealershipLevel3, setCurrentConsultant } from '@/lib/store/currentSlice';
 import { databases, account, usersId, databaseId } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { setUserData, setLoading, setError } from '@/lib/store/userSlice';
@@ -196,6 +196,12 @@ const DealershipsScreen = () => {
     // If there are level3s available, require one to be selected
     if (availableRooftops.length > 0 && !selectedRooftop) return;
 
+    // Get level 1 ID from user data
+    const level1Id = userData.dealershipLevel1?.[0]?.$id;
+    if (level1Id) {
+      dispatch(setCurrentDealershipLevel1(level1Id));
+    }
+
     // Filter scans based on selection
     const filteredScans = selectedRooftop
       ? userData.scans?.filter(scan => scan.dealershipLevel3?.$id === selectedRooftop.$id)
@@ -219,6 +225,10 @@ const DealershipsScreen = () => {
     dispatch(setCurrentConsultant(userData.$id || null));
     
     console.log('Final Selected State:', {
+      dealershipLevel1: {
+        id: level1Id,
+        name: userData.dealershipLevel1?.[0]?.name
+      },
       dealershipLevel2: {
         id: selectedDealership.$id,
         name: selectedDealership.name

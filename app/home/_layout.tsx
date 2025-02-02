@@ -5,9 +5,9 @@ import {
     Dimensions,
     Image
 } from "react-native";
-import React from "react";
-import { router, Slot, usePathname } from "expo-router";
-import { useSelector } from "react-redux";
+import React, { useEffect } from "react";
+import { router, Stack, usePathname, Slot } from "expo-router";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/lib/store/store";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import AnalyticsIcon from "@/components/svg/analyticsIcon";
@@ -18,10 +18,13 @@ import SidePaneComponent from "@/components/sidepane/sidePane";
 import ActivityIcon from "@/components/svg/activityIcon";
 import CustomersIcon from "@/components/svg/customersIcon";
 import ScannerIcon from "@/components/svg/scannerIcon";
+import { databases, databaseId, usersId } from "@/lib/appwrite";
+import { setUserData } from "@/lib/store/userSlice";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const HomeLayout = () => {
+    const dispatch = useDispatch();
     const isActivitiesFilterVisible = useSelector(
         (state: RootState) => state.ui.isActivitiesFilterVisible
     );
@@ -29,9 +32,28 @@ const HomeLayout = () => {
         (state: RootState) => state.ui.isCustomersFilterVisible
     );
 
-    const consultant = useSelector((state: RootState) => state.consultant.data);
+    const userData = useSelector((state: RootState) => state.user.data);
     const pathname = usePathname();
     const translateX = useSharedValue(-SCREEN_WIDTH * 0.95);
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                if (userData?.$id) {
+                    const response = await databases.getDocument(
+                        databaseId,
+                        usersId,
+                        userData.$id
+                    );
+                    dispatch(setUserData(response));
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            }
+        };
+
+        fetchUserData();
+    }, []);
 
     const openGesture = Gesture.Pan()
         .hitSlop({ left: 0, width: 30 })
@@ -67,9 +89,9 @@ const HomeLayout = () => {
     const shouldRenderLayout = validPaths.includes(pathname);
 
     const getInitials = (name: string | undefined): string => {
-        if (!name) return "CU";
+        if (!name) return "Us";
         const firstName = name.trim().split(" ")[0] || "";
-        if (!firstName) return "CU"
+        if (!firstName) return "Us"
         const firstLetter = firstName[0]?.toUpperCase() || "";
         const secondLetter = firstName[1]?.toLowerCase() || "";
         return `${firstLetter}${secondLetter}`
@@ -90,7 +112,7 @@ const HomeLayout = () => {
                         height: '100%',
                         backgroundColor: 'black',
                         opacity: isActivitiesFilterVisible || isCustomersFilterVisible ? 0.1 : 0,
-                        pointerEvents: 'none',
+                        pointerEvents: isActivitiesFilterVisible || isCustomersFilterVisible ? 'auto' : 'none',
                     }}
                 />
                 {/* Header */}
@@ -113,14 +135,14 @@ const HomeLayout = () => {
                                 height: 32
                             }}
                         >
-                            {consultant?.['profile-icon'] ? (
+                            {userData?.profileImage ? (
                                 <Image
-                                    source={{ uri: consultant['profile-icon'] }}
+                                    source={{ uri: userData.profileImage }}
                                     style={{ width: 32, height: 32, borderRadius: 16 }}
                                 />
                             ) : (
                                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
-                                    {getInitials(consultant?.name)}
+                                    {getInitials(userData?.name)}
                                 </Text>
                             )}
                         </View>

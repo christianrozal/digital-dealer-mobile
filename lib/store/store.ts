@@ -3,7 +3,6 @@ import { configureStore, current } from '@reduxjs/toolkit';
 import sidePaneReducer from './sidePaneSlice';
 import uiReducer from './uiSlice';
 import customerReducer from './customerSlice';
-import rooftopReducer from './rooftopSlice';
 import currentReducer from './currentSlice';
 import userReducer from './userSlice';
 import consultantReducer from './consultantSlice';
@@ -12,7 +11,6 @@ const store = configureStore({
     sidePane: sidePaneReducer,
     ui: uiReducer,
     customer: customerReducer,
-    rooftop: rooftopReducer,
     current: currentReducer,
     user: userReducer,
     consultant: consultantReducer,

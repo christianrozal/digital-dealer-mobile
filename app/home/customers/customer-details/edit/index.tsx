@@ -9,7 +9,7 @@ import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
 import { Client, Storage, ID, Databases } from 'react-native-appwrite';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { setConsultant } from '@/lib/store/consultantSlice';
+import { setUserData } from '@/lib/store/userSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 import { databaseId, customersId, projectId, bucketId } from '@/lib/appwrite';
 
@@ -121,21 +121,7 @@ const EditCustomerScreen = () => {
         return;
       }
 
-      // Update customer in Appwrite
-      const updatedCustomer = await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_ID,
-        appwriteCustomer.$id,
-        {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          profileImage: appwriteCustomer.profileImage,
-          profileImageId: appwriteCustomer.profileImageId
-        }
-      );
-
-      // Update all scans that reference this customer
+      // Update Redux state first
       const updatedScans = userData?.scans?.map((scan) => {
         const scanCustomer = scan.customers as AppwriteCustomer;
         if (scanCustomer.$id === appwriteCustomer.$id) {
@@ -154,16 +140,37 @@ const EditCustomerScreen = () => {
         return scan;
       }) || [];
 
-      // Update Redux store
+      // Update Redux store first
       if (userData) {
-        dispatch(setConsultant({
+        dispatch(setUserData({
           ...userData,
-          scans: updatedScans,
+          scans: updatedScans as Scan[],
         }));
       }
-
       dispatch(setCustomerUpdateSuccess(true));
-      router.back();
+
+      // Then update database
+      await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTION_ID,
+        appwriteCustomer.$id,
+        {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          profileImage: appwriteCustomer.profileImage,
+          profileImageId: appwriteCustomer.profileImageId
+        }
+      );
+
+      Alert.alert('Success', 'Customer profile updated successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            router.replace("/home/customers/customer-details");
+          }
+        }
+      ]);
 
     } catch (error) {
       console.error('Error updating customer:', error);
@@ -187,77 +194,83 @@ const EditCustomerScreen = () => {
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 0.8,
-        selectionLimit: 1,
       });
 
-      if (result.didCancel || !result.assets?.[0]?.uri) return;
+      if (result.didCancel) return;
 
-      const asset = result.assets[0];
-      if (!asset.uri) {
-        Alert.alert('Error', 'Could not get image URI');
-        return;
+      if (result.assets && result.assets[0].uri) {
+        const uri = result.assets[0].uri;
+        const fileName = uri.split('/').pop();
+        const fileType = result.assets[0].type || 'image/jpeg';
+
+        const appwriteCustomer = customerData as AppwriteCustomer;
+
+        // Convert image to blob
+        const response = await fetch(uri);
+        const blob = await response.blob();
+
+        // Delete old profile image if it exists
+        if (appwriteCustomer.profileImageId) {
+          try {
+            await storage.deleteFile(BUCKET_ID, appwriteCustomer.profileImageId);
+          } catch (error) {
+            console.log('No previous image to delete or error deleting:', error);
+          }
+        }
+
+        // Upload new image
+        const file = new File([blob], fileName || 'profile.jpg', { type: fileType });
+        const uploadResponse = await storage.createFile(
+          BUCKET_ID,
+          ID.unique(),
+          file
+        );
+
+        // Get preview URL
+        const previewUrl = storage.getFilePreview(
+          BUCKET_ID,
+          uploadResponse.$id,
+          500,
+          500
+        );
+
+        // Update Redux state first
+        const updatedScans = userData?.scans?.map((scan) => {
+          const scanCustomer = scan?.customers as AppwriteCustomer;
+          if (scanCustomer?.$id === appwriteCustomer.$id) {
+            return {
+              ...scan,
+              customers: {
+                ...scanCustomer,
+                profileImage: previewUrl.toString(),
+                profileImageId: uploadResponse.$id
+              }
+            };
+          }
+          return scan;
+        }) || [];
+
+        // Update Redux first
+        dispatch(setUserData({
+          ...userData,
+          scans: updatedScans
+        }));
+        dispatch(setCustomerUpdateSuccess(true));
+
+        // Then update database
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_ID,
+          appwriteCustomer.$id,
+          {
+            profileImage: previewUrl.toString(),
+            profileImageId: uploadResponse.$id
+          }
+        );
+
+        Alert.alert('Success', 'Profile image updated successfully!');
+        router.replace("/home/customers/customer-details");
       }
-
-      const appwriteCustomer = customerData as AppwriteCustomer;
-
-      // Delete old profile image if it exists
-      if (appwriteCustomer.profileImageId) {
-        try {
-          await storage.deleteFile(BUCKET_ID, appwriteCustomer.profileImageId);
-        } catch (error) {
-          console.log('No previous image to delete or error deleting:', error);
-        }
-      }
-
-      // Upload new image
-      const uploadedFile = await storage.createFile(
-        BUCKET_ID,
-        ID.unique(),
-        {
-          name: asset.fileName || 'profile.jpg',
-          type: asset.type || 'image/jpeg',
-          size: asset.fileSize || 0,
-          uri: asset.uri
-        }
-      );
-
-      // Get the file view URL
-      const fileUrl = storage.getFileView(BUCKET_ID, uploadedFile.$id).toString();
-
-      // Update customer with new profile image
-      const updatedCustomer = await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_ID,
-        appwriteCustomer.$id,
-        {
-          profileImage: fileUrl,
-          profileImageId: uploadedFile.$id
-        }
-      );
-
-      // Update local state
-      const updatedScans = userData?.scans?.map((scan) => {
-        const scanCustomer = scan?.customers as AppwriteCustomer;
-        if (scanCustomer?.$id === appwriteCustomer.$id) {
-          return {
-            ...scan,
-            customers: {
-              ...scanCustomer,
-              profileImage: fileUrl,
-              profileImageId: uploadedFile.$id
-            }
-          } as Scan;
-        }
-        return scan;
-      }) || [];
-
-      dispatch(setConsultant({
-        ...userData,
-        scans: updatedScans,
-      }));
-
-      Alert.alert('Success', 'Profile image updated successfully');
-
     } catch (error) {
       console.error('Image upload error:', error);
       Alert.alert('Error', 'Failed to upload image');

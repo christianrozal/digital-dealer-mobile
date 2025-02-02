@@ -20,6 +20,9 @@ import ButtonComponent from "./button";
 import ChevronDownIcon from "./svg/chevronDown";
 import CalendarFilter from "./calendarFilter";
 import Calendar2Icon from "./svg/calendar2";
+import dayjs from "dayjs";
+
+type SortOption = "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest";
 
 const ActivitiesFilter = () => {
   const dispatch = useDispatch();
@@ -58,8 +61,8 @@ const ActivitiesFilter = () => {
   console.log("activitiesSelectedInterestedIns:", activitiesSelectedInterestedIns);
   console.log("activitiesSelectedInterestStatuses:", activitiesSelectedInterestStatuses);
   console.log("activitiesSortBy:", activitiesSortBy);
-  console.log("activitiesFromDate:", activitiesFromDate ? activitiesFromDate.format("YYYY-MM-DD") : activitiesFromDate); // Format dayjs for easier reading
-  console.log("activitiesToDate:", activitiesToDate ? activitiesToDate.format("YYYY-MM-DD") : activitiesToDate);       // Format dayjs for easier reading
+  console.log("activitiesFromDate:", activitiesFromDate ? dayjs(activitiesFromDate).format("YYYY-MM-DD") : activitiesFromDate);
+  console.log("activitiesToDate:", activitiesToDate ? dayjs(activitiesToDate).format("YYYY-MM-DD") : activitiesToDate);
 
 
   const INTEREST_OPTIONS = [
@@ -76,7 +79,7 @@ const ActivitiesFilter = () => {
     { value: "Purchased", label: "Purchased" },
   ];
 
-    const SORT_OPTIONS = [
+    const SORT_OPTIONS: { value: SortOption; label: string }[] = [
         { value: "a_to_z", label: "A to Z" },
         { value: "z_to_a", label: "Z to A" },
         { value: "scans_low_to_high", label: "Number of scans (lowest to highest)" },
@@ -156,48 +159,44 @@ const ActivitiesFilter = () => {
     }
   };
 
-  return (
+  return showCalendar ? (
+    // Calendar Screen
     <View className="flex-1 bg-white">
-      {/* Calendar Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showCalendar}
-        onRequestClose={() => setShowCalendar(false)}
-      >
-        <View className="flex-1 justify-end bg-transparent">
-          <View className="h-2/3 bg-white rounded-t-3xl" style={{ padding: 40 }}>
-            <CalendarFilter
-              onClose={(date) => {
-                if (date) {
-                  if (selectingFor === "from") {
-                    dispatch(setActivitiesFromDate(date));
-                  } else {
-                    dispatch(setActivitiesToDate(date));
-                  }
-                }
-                setShowCalendar(false);
-              }}
-              initialDate={selectingFor === "from" ? activitiesFromDate : activitiesToDate}
-              fromDate={activitiesFromDate}
-              toDate={activitiesToDate}
-              selectingFor={selectingFor}
-            />
-          </View>
-        </View>
-      </Modal>
-
+      <View className="h-full">
+        <CalendarFilter
+          onClose={(date) => {
+            if (date) {
+              const isoDate = date.toISOString();
+              if (selectingFor === "from") {
+                dispatch(setActivitiesFromDate(isoDate));
+              } else {
+                dispatch(setActivitiesToDate(isoDate));
+              }
+            }
+            setShowCalendar(false);
+          }}
+          initialDate={selectingFor === "from" ? (activitiesFromDate ? dayjs(activitiesFromDate) : undefined) : (activitiesToDate ? dayjs(activitiesToDate) : undefined)}
+          fromDate={activitiesFromDate ? dayjs(activitiesFromDate) : undefined}
+          toDate={activitiesToDate ? dayjs(activitiesToDate) : undefined}
+          selectingFor={selectingFor}
+        />
+      </View>
+    </View>
+  ) : (
+    // Filter Screen
+    <View className="bg-white">
+      <View className="h-full gap-3 justify-between">
+      <View>
       {/* Created On Filter */}
       <View>
         <View className="flex-row gap-2 justify-between">
           <Text className="text-sm font-semibold">Created On</Text>
           <TouchableOpacity
-            className="text-color1 font-semibold text-sm"
             onPress={() => {
               dispatch(resetActivitiesDateRange());
             }}
           >
-            Reset
+            <Text className="text-color1 font-semibold text-sm">Reset</Text>
           </TouchableOpacity>
         </View>
         <View className="flex-row gap-5 mt-4">
@@ -212,7 +211,7 @@ const ActivitiesFilter = () => {
               }}
             >
               <Text className="text-gray-700 font-semibold text-xs">
-                {activitiesFromDate ? activitiesFromDate.format("DD-MM-YYYY") : "Select date"}
+                {activitiesFromDate ? dayjs(activitiesFromDate).format("DD-MM-YYYY") : "Select date"}
               </Text>
               <Calendar2Icon width={20} height={20} />
             </TouchableOpacity>
@@ -228,171 +227,174 @@ const ActivitiesFilter = () => {
               }}
             >
               <Text className="text-gray-700 font-semibold text-xs">
-                {activitiesToDate ? activitiesToDate.format("DD-MM-YYYY") : "Select date"}
+                {activitiesToDate ? dayjs(activitiesToDate).format("DD-MM-YYYY") : "Select date"}
               </Text>
               <Calendar2Icon width={20} height={20} />
             </TouchableOpacity>
           </View>
         </View>
-      </View>
 
-      {/* Sort By Filter */}
-      <View className="mt-4 relative z-10">
-        <Text className="text-xs text-gray-600 font-medium">Sort By</Text>
-        <TouchableOpacity
-          className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-          style={{ backgroundColor: "#FAFAFA" }}
-          onPress={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-        >
-          <Text
-            className={`text-xs ${activitiesSortBy ? "text-gray-600" : "text-gray-400"}`}
+        {/* Sort By Filter */}
+        <View className="mt-4 relative z-10">
+          <Text className="text-xs text-gray-600 font-medium">Sort By</Text>
+          <TouchableOpacity
+            className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
+            style={{ backgroundColor: "#FAFAFA" }}
+            onPress={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
           >
-             {activitiesSortBy
-              ? SORT_OPTIONS.find((o) => o.value === activitiesSortBy)?.label
-              : "Select sort option"}
-          </Text>
+            <Text
+              className={`text-xs ${activitiesSortBy ? "text-gray-600" : "text-gray-400"}`}
+            >
+               {activitiesSortBy
+                ? SORT_OPTIONS.find((o) => o.value === activitiesSortBy)?.label
+                : "Select sort option"}
+            </Text>
 
-          <View
-            className="transition-transform duration-300"
-            style={{
-              transform: [{ rotate: isSortDropdownOpen ? "180deg" : "0deg" }],
-            }}
-          >
-            <ChevronDownIcon width={16} height={16} />
-          </View>
-        </TouchableOpacity>
-        {isSortDropdownOpen && (
-          <ScrollView
-            className="mt-1 bg-white border border-gray-200  rounded-md"
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 10,
-              height: 112,
-            }}
-          >
-            {SORT_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                className={`rounded-md p-3 flex-row items-center justify-between ${
-                  activitiesSortBy === option.value ? "bg-blue-50" : "bg-white"
-                }`}
-                onPress={() => {
-                  dispatch(setActivitiesSortBy(option.value));
-                  setIsSortDropdownOpen(false);
-                }}
-              >
-                <Text
-                  className={`text-xs ${
-                    activitiesSortBy === option.value ? "text-color1" : "text-gray-700"
+            <View
+              className="transition-transform duration-300"
+              style={{
+                transform: [{ rotate: isSortDropdownOpen ? "180deg" : "0deg" }],
+              }}
+            >
+              <ChevronDownIcon width={16} height={16} />
+            </View>
+          </TouchableOpacity>
+          {isSortDropdownOpen && (
+            <ScrollView
+              className="mt-1 bg-white border border-gray-200  rounded-md"
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                zIndex: 10,
+                height: 112,
+              }}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  className={`rounded-md p-3 flex-row items-center justify-between ${
+                    activitiesSortBy === option.value ? "bg-blue-50" : "bg-white"
                   }`}
+                  onPress={() => {
+                    dispatch(setActivitiesSortBy(option.value));
+                    setIsSortDropdownOpen(false);
+                  }}
                 >
-                  {option.label}
-                </Text>
-                {activitiesSortBy === option.value && (
-                  <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      dispatch(resetActivitiesSortBy());
-                      setIsSortDropdownOpen((prev) => !prev);
-                    }}
+                  <Text
+                    className={`text-xs ${
+                      activitiesSortBy === option.value ? "text-color1" : "text-gray-700"
+                    }`}
                   >
-                    <CloseIcon width={16} height={16} />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
-      </View>
-
-      {/* Interested In Filter */}
-      <View className="mt-4">
-        <Text className="text-xs text-gray-600 font-medium">Interested In</Text>
-        <View
-          className="flex-row justify-between gap-2 items-center"
-          style={{ paddingRight: 12 }}
-        >
-          <View className="flex-row flex-wrap gap-2 mt-3">
-            {INTEREST_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                onPress={() => dispatch(toggleActivitiesInterestedIn(option.value))}
-                className={`rounded-full border px-3 ${getInterestOptionStyle(
-                  option.value
-                )}`}
-                style={{ paddingVertical: 6 }}
-              >
-                <Text
-                  className={`text-xs font-normal ${getInterestTextStyle(
-                    option.value
-                  )}`}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {activitiesSelectedInterestedIns.length > 0 && (
-            <TouchableOpacity onPress={() => dispatch(resetActivitiesInterestedIns())}>
-              <CloseIcon width={16} height={16} />
-            </TouchableOpacity>
+                    {option.label}
+                  </Text>
+                  {activitiesSortBy === option.value && (
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        dispatch(resetActivitiesSortBy());
+                        setIsSortDropdownOpen((prev) => !prev);
+                      }}
+                    >
+                      <CloseIcon width={16} height={16} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           )}
         </View>
-      </View>
 
-      {/* Interest Status Filter */}
-      <View className="mt-4">
-        <Text className="text-xs text-gray-600 font-medium">
-          Interest Status
-        </Text>
-        <View
-          className="flex-row justify-between gap-2 items-center"
-          style={{ paddingRight: 12 }}
-        >
-          <View className="flex-row flex-wrap gap-2 mt-3">
-            {INTEREST_STATUS_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                onPress={() => dispatch(toggleActivitiesInterestStatus(option.value))}
-                className={`rounded-full border px-3 ${getStatusOptionStyle(
-                  option.value
-                )}`}
-                style={{ paddingVertical: 6 }}
-              >
-                <Text
-                  className={`text-xs font-normal ${getStatusTextStyle(
+        {/* Interested In Filter */}
+        <View className="mt-4">
+          <Text className="text-xs text-gray-600 font-medium">Interested In</Text>
+          <View
+            className="flex-row justify-between gap-2 items-center"
+            style={{ paddingRight: 12 }}
+          >
+            <View className="flex-row flex-wrap gap-2 mt-3">
+              {INTEREST_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  onPress={() => dispatch(toggleActivitiesInterestedIn(option.value))}
+                  className={`rounded-full border px-3 ${getInterestOptionStyle(
                     option.value
                   )}`}
+                  style={{ paddingVertical: 6 }}
                 >
-                  {option.label}
-                </Text>
+                  <Text
+                    className={`text-xs font-normal ${getInterestTextStyle(
+                      option.value
+                    )}`}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {activitiesSelectedInterestedIns.length > 0 && (
+              <TouchableOpacity onPress={() => dispatch(resetActivitiesInterestedIns())}>
+                <CloseIcon width={16} height={16} />
               </TouchableOpacity>
-            ))}
+            )}
           </View>
-          {activitiesSelectedInterestStatuses.length > 0 && (
-            <TouchableOpacity onPress={() => dispatch(resetActivitiesInterestStatuses())}>
-              <CloseIcon width={16} height={16} />
-            </TouchableOpacity>
-          )}
         </View>
-      </View>
 
+        {/* Interest Status Filter */}
+        <View className="mt-4">
+          <Text className="text-xs text-gray-600 font-medium">
+            Interest Status
+          </Text>
+          <View
+            className="flex-row justify-between gap-2 items-center"
+            style={{ paddingRight: 12 }}
+          >
+            <View className="flex-row flex-wrap gap-2 mt-3">
+              {INTEREST_STATUS_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  onPress={() => dispatch(toggleActivitiesInterestStatus(option.value))}
+                  className={`rounded-full border px-3 ${getStatusOptionStyle(
+                    option.value
+                  )}`}
+                  style={{ paddingVertical: 6 }}
+                >
+                  <Text
+                    className={`text-xs font-normal ${getStatusTextStyle(
+                      option.value
+                    )}`}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {activitiesSelectedInterestStatuses.length > 0 && (
+              <TouchableOpacity onPress={() => dispatch(resetActivitiesInterestStatuses())}>
+                <CloseIcon width={16} height={16} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        </View>
+
+        
+      </View>
       {/* Action Buttons */}
-      <View className="flex-row mt-5 gap-3 w-full">
-        <ButtonComponent
-          label="Reset All"
-          var2
-          className="flex-1"
-          onPress={() => dispatch(resetAllActivitiesFilters())}
-        />
-        <ButtonComponent
-          label={`Apply Filters (${filterCount})`}
-          className="flex-1"
-          onPress={() => dispatch(hideActivitiesFilter())}
-        />
+      <View className="flex-row gap-3 w-full">
+          <ButtonComponent
+            label="Reset All"
+            var2
+            className="flex-1"
+            onPress={() => dispatch(resetAllActivitiesFilters())}
+          />
+          <ButtonComponent
+            label={`Apply Filters (${filterCount})`}
+            className="flex-1"
+            onPress={() => dispatch(hideActivitiesFilter())}
+          />
+        </View>
       </View>
     </View>
   );

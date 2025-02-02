@@ -8,39 +8,24 @@ import ButtonComponent from '@/components/button';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
-import { Client, Storage, ID, Databases } from 'react-native-appwrite';
+import { Client, ID } from 'react-native-appwrite';
 import * as ImagePicker from 'react-native-image-picker';
-import { setConsultant } from '@/lib/store/consultantSlice';
+import { setUserData } from '@/lib/store/userSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
+import { client, databases, storage, databaseId, usersId, bucketId } from '@/lib/appwrite';
 
-
-// Initialize Appwrite client
-const client = new Client();
-client
-    .setEndpoint('https://cloud.appwrite.io/v1')
-    .setProject('6780c774003170c68252');
-
-const storage = new Storage(client);
-const databases = new Databases(client);
-const BUCKET_ID = '679a6a24003b707de5c0';
-const DATABASE_ID = "67871d61002bf7e6bc9e";
-const COLLECTION_ID = "6787235d000989f46de3";
 
 const EditProfileScreen = () => {
-    const consultant = useSelector((state: RootState) => state.consultant.data);
+    const userData = useSelector((state: RootState) => state.user.data);
     const dispatch = useDispatch();
     const [profileImage, setProfileImage] = useState<string | null>(null);
     const [formData, setFormData] = useState({
-        name: consultant?.name || '',
-        position: consultant?.position || '',
-        email: consultant?.email || '',
-        phone: consultant?.phone || ''
+        name: userData?.name || '',
+        position: userData?.position || '',
+        phone: userData?.phone || ''
     });
     const [loading, setLoading] = useState(false);
 
-
-
-    // Handle text input changes
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({
             ...prev,
@@ -48,43 +33,33 @@ const EditProfileScreen = () => {
         }));
     };
 
-
-    // Update profile information in database
     const handleUpdateProfile = async () => {
         setLoading(true);
         try {
-            if (!consultant?.$id) {
-                Alert.alert('Error', 'No consultant profile found');
+            if (!userData?.$id) {
+                Alert.alert('Error', 'No user profile found');
                 return;
             }
 
             const updatedDocument = await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTION_ID,
-                consultant.$id,
-                {
-                    name: formData.name,
-                    position: formData.position,
-                    email: formData.email,
-                    phone: formData.phone
-                }
+                databaseId,
+                usersId,
+                userData.$id,
+                formData
             );
 
-            // Update Redux store
-            dispatch(setConsultant({
-                ...consultant,
+            dispatch(setUserData({
+                ...userData,
                 ...formData
             }));
 
-                dispatch(setCustomerUpdateSuccess(true));
-            // Navigate to profile screen
+            dispatch(setCustomerUpdateSuccess(true));
             router.push("/home/profile");
 
         } catch (error) {
             Alert.alert('Error', 'Failed to update profile');
             console.error('Update error:', error);
-           dispatch(setCustomerUpdateSuccess(false));
-
+            dispatch(setCustomerUpdateSuccess(false));
         } finally {
             setLoading(false);
         }
@@ -101,6 +76,11 @@ const EditProfileScreen = () => {
 
     const handleImageUpload = async () => {
         try {
+            if (!userData?.$id) {
+                Alert.alert('Error', 'No user profile found');
+                return;
+            }
+
             const result = await ImagePicker.launchImageLibrary({
                 mediaType: 'photo',
                 quality: 0.8,
@@ -112,77 +92,75 @@ const EditProfileScreen = () => {
                 const uri = result.assets[0].uri;
                 const fileName = uri.split('/').pop();
                 const fileType = result.assets[0].type || 'image/jpeg';
-                const fileSize = result.assets[0].fileSize || 0;
-            
-                // Create the file object that Appwrite expects
-                const file = {
-                    name: fileName || 'profile.jpg',
-                    type: fileType,
-                    size: fileSize,
-                    uri: uri
-                }
-            
+
+                // Convert image to blob
+                const response = await fetch(uri);
+                const blob = await response.blob();
+
                 // Delete previous image if exists - with error handling
-                if (consultant?.profileImageId) {
-                try {
-                  await storage.deleteFile(BUCKET_ID, consultant.profileImageId);
-                } catch (deleteError) {
-                    console.log('Previous image not found, proceeding anyway:', deleteError);
-                    // Optional: Update state to remove missing image reference
-                    dispatch(setConsultant({
-                        ...consultant,
-                        profileImageId: undefined
-                    }));
+                if (userData?.profileImageId) {
+                    try {
+                        await storage.deleteFile(bucketId, userData.profileImageId);
+                    } catch (deleteError) {
+                        console.log('Previous image not found, proceeding anyway:', deleteError);
+                    }
                 }
-                }
-            
+
                 // Upload new image
+                const file = new File([blob], fileName || 'profile.jpg', { type: fileType });
                 const uploadResponse = await storage.createFile(
-                    BUCKET_ID,
+                    bucketId,
                     ID.unique(),
                     file
                 );
+
                 // Get preview URL
                 const previewUrl = storage.getFilePreview(
-                    BUCKET_ID,
+                    bucketId,
                     uploadResponse.$id,
                     500,
                     500
                 );
                 setProfileImage(previewUrl.toString());
-            
-            
-                // Update the consultant document with both URL and image ID
-                    await databases.updateDocument(
-                        DATABASE_ID,
-                        COLLECTION_ID,
-                        consultant.$id,
-                        {
-                            'profile-icon': previewUrl.toString(),
-                            'profileImageId': uploadResponse.$id
-                        }
-                    );
-            
-            
-                     // Dispatch the updated consultant data
-                    dispatch(setConsultant({
-                        ...consultant,
-                        'profile-icon': previewUrl.toString(),
-                        profileImageId: uploadResponse.$id
-                    }));
+
+                // Update Redux state first
+                const newUserData = {
+                    ...userData,
+                    profileImage: previewUrl.toString(),
+                    profileImageId: uploadResponse.$id
+                };
+                
+                dispatch(setUserData(newUserData));
                 dispatch(setCustomerUpdateSuccess(true));
-                router.push("/home/profile");
+
+                // Then update the database
+                await databases.updateDocument(
+                    databaseId,
+                    usersId,
+                    userData.$id,
+                    {
+                        profileImage: previewUrl.toString(),
+                        profileImageId: uploadResponse.$id
+                    }
+                );
+
+                Alert.alert('Success', 'Profile image updated successfully!', [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            router.replace("/home/profile");
+                        }
+                    }
+                ]);
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to upload image');
             console.error('Image upload error:', error);
-           dispatch(setCustomerUpdateSuccess(false));
         }
     };
 
-
     return (
-        <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
+        <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
             <View>
                 {/* Header */}
                 <View className="flex-row w-full justify-between items-center">
@@ -195,22 +173,22 @@ const EditProfileScreen = () => {
                     <View style={{ width: 18 }} />
                 </View>
 
-                <View className=' px-4'>
+                <View className='px-4'>
                     <Text className="text-2xl font-semibold mt-10">Edit Profile</Text>
                     <TouchableOpacity className='mt-10 mx-auto' onPress={handleImageUpload}>
                         <View
                             className="bg-color1 rounded-full flex items-center justify-center"
                             style={{ width: 100, height: 100 }}
                         >
-                            {(profileImage || consultant?.['profile-icon']) ? (
+                            {(profileImage || userData?.profileImage) ? (
                                 <Image
-                                    source={{ uri: profileImage || consultant['profile-icon'] }}
+                                    source={{ uri: profileImage || userData?.profileImage || '' }}
                                     style={{ width: 100, height: 100, borderRadius: 50 }}
                                 />
                             ) : (
-                                    <Text className="text-white font-bold" style={{ fontSize: 30 }}>
-                                        {getInitials(consultant?.name)}
-                                    </Text>
+                                <Text className="text-white font-bold" style={{ fontSize: 30 }}>
+                                    {getInitials(userData?.name)}
+                                </Text>
                             )}
                         </View>
                         <View className='ml-auto -mt-5'>
@@ -232,13 +210,6 @@ const EditProfileScreen = () => {
                         />
                         <TextInput
                             className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                            placeholder="Email Address"
-                            value={formData.email}
-                            onChangeText={(text) => handleInputChange('email', text)}
-                            keyboardType="email-address"
-                        />
-                        <TextInput
-                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
                             placeholder="Phone Number"
                             value={formData.phone}
                             onChangeText={(text) => handleInputChange('phone', text)}
@@ -252,7 +223,7 @@ const EditProfileScreen = () => {
                     label={loading ? "Updating..." : "Update Profile"}
                     onPress={handleUpdateProfile}
                     disabled={loading}
-                    loading={loading} // Pass loading prop for conditional rendering of the activity indicator in the button
+                    loading={loading}
                 />
             </View>
         </View>
