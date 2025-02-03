@@ -16,6 +16,13 @@ interface UIState {
   customersSortBy: "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest" | null;
   customersFromDate: string | null;
   customersToDate: string | null;
+
+  isAnalyticsFilterVisible: boolean;
+  analyticsSelectedInterestedIns: string[];
+  analyticsSelectedInterestStatuses: string[];
+  analyticsSortBy: "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest" | null;
+  analyticsFromDate: string | null;
+  analyticsToDate: string | null;
     
   customerUpdateSuccess: boolean;
 }
@@ -36,6 +43,14 @@ const initialState: UIState = {
   customersToDate: null,
     
   customerUpdateSuccess: false,
+
+  // Analytics Filter Initial State
+  isAnalyticsFilterVisible: false,
+  analyticsSelectedInterestedIns: [],
+  analyticsSelectedInterestStatuses: [],
+  analyticsSortBy: null,
+  analyticsFromDate: null,
+  analyticsToDate: null,
 };
 
 const uiSlice = createSlice({
@@ -150,6 +165,28 @@ const uiSlice = createSlice({
       setCustomerUpdateSuccess: (state, action: PayloadAction<boolean>) => {
         state.customerUpdateSuccess = action.payload;
       },
+
+    // Analytics Filter Reducers
+    showAnalyticsFilter: (state) => {
+      state.isAnalyticsFilterVisible = true;
+    },
+    hideAnalyticsFilter: (state) => {
+      state.isAnalyticsFilterVisible = false;
+    },
+    setAnalyticsFromDate: (state, action: PayloadAction<string | null>) => {
+      state.analyticsFromDate = action.payload;
+    },
+    setAnalyticsToDate: (state, action: PayloadAction<string | null>) => {
+      state.analyticsToDate = action.payload;
+    },
+    resetAnalyticsDateRange: (state) => {
+      state.analyticsFromDate = null;
+      state.analyticsToDate = null;
+    },
+    resetAllAnalyticsFilters: (state) => {
+      state.analyticsFromDate = null;
+      state.analyticsToDate = null;
+    },
   },
 });
 
@@ -180,6 +217,14 @@ export const {
     setCustomersToDate,
     resetCustomersDateRange,
     setCustomerUpdateSuccess,
+
+  // Analytics Filter Actions
+  showAnalyticsFilter,
+  hideAnalyticsFilter,
+  setAnalyticsFromDate,
+  setAnalyticsToDate,
+  resetAnalyticsDateRange,
+  resetAllAnalyticsFilters,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

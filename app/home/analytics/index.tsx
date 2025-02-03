@@ -1,126 +1,350 @@
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import React from "react";
+import { View, Text, TouchableOpacity, ScrollView, Modal } from "react-native";
+import React, { useMemo, useState } from "react";
 import FilterIcon from "@/components/svg/filterIcon";
 import { LineChart, PieChart } from "react-native-gifted-charts";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "@/lib/store/store";
+import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import CalendarFilter from "@/components/calendarFilter";
+import Calendar2Icon from "@/components/svg/calendar2";
+import AnalyticsFilter from "@/components/analyticsFilter";
+import { showAnalyticsFilter, hideAnalyticsFilter } from "@/lib/store/uiSlice";
 
-const data = [
-  { value: 30 },
-  { value: 50 },
-  { value: 45 },
-  { value: 85 },
-  { value: 20 },
-  { value: 35 },
-  { value: 75 },
-  { value: 60 },
-  { value: 55 },
-  { value: 70 },
-];
+dayjs.extend(isBetween);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 
-const data2 = [
-  { value: 23, color: '#8396FE' },
-  { value: 55, color: '#B3A4F6' },
-  { value: 19, color: '#8E72FF' },
-  { value: 23, color: '#A0ABFF' },
-];
-
-const data3 = [
-  { value: 2.3, color: '#8396FE' },
-  { value: 5.5, color: '#B3A4F6' },
-  { value: 19.2, color: '#8E72FF' },
-  { value: 53, color: '#A0ABFF' },
-];
+interface CustomerStats {
+  interestedIn: {
+    Buying: number;
+    Selling: number;
+    Financing: number;
+    Purchased: number;
+  };
+  interestStatus: {
+    Hot: number;
+    Warm: number;
+    Cold: number;
+    Bought: number;
+  };
+  dailyScans: { [key: string]: number };
+}
 
 const AnalyticsScreen = () => {
+  const dispatch = useDispatch();
+  const userData = useSelector((state: RootState) => state.user.data);
+  const { analyticsFromDate, analyticsToDate, isAnalyticsFilterVisible } = useSelector((state: RootState) => state.ui);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
+
+  // Get the date range text for display
+  const getDateRangeText = useMemo(() => {
+    if (!analyticsFromDate && !analyticsToDate) return "Last 7 days";
+
+    const isFilterMatch = (filterFrom: dayjs.Dayjs, filterTo: dayjs.Dayjs) => {
+      const selectedFrom = dayjs(analyticsFromDate);
+      const selectedTo = dayjs(analyticsToDate);
+      return selectedFrom.isSame(filterFrom, 'day') && selectedTo.isSame(filterTo, 'day');
+    };
+
+    // Check if it matches any quick filter
+    const quickFilters = [
+      {
+        label: "Last 7 Days",
+        getRange: () => ({
+          from: dayjs().subtract(6, 'day').startOf('day'),
+          to: dayjs().endOf('day')
+        })
+      },
+      {
+        label: "Last 30 Days",
+        getRange: () => ({
+          from: dayjs().subtract(29, 'day').startOf('day'),
+          to: dayjs().endOf('day')
+        })
+      },
+      {
+        label: "This Week",
+        getRange: () => ({
+          from: dayjs().startOf('week'),
+          to: dayjs().endOf('day')
+        })
+      },
+      {
+        label: "This Month",
+        getRange: () => ({
+          from: dayjs().startOf('month'),
+          to: dayjs().endOf('day')
+        })
+      },
+      {
+        label: "Last Month",
+        getRange: () => ({
+          from: dayjs().subtract(1, 'month').startOf('month'),
+          to: dayjs().subtract(1, 'month').endOf('month')
+        })
+      },
+      {
+        label: "This Year",
+        getRange: () => ({
+          from: dayjs().startOf('year'),
+          to: dayjs().endOf('day')
+        })
+      }
+    ];
+
+    const matchingQuickFilter = quickFilters.find(filter => {
+      const range = filter.getRange();
+      return isFilterMatch(range.from, range.to);
+    });
+
+    if (matchingQuickFilter) {
+      return matchingQuickFilter.label;
+    }
+
+    // If no quick filter matches, show the date range
+    return `${dayjs(analyticsFromDate).format('D MMM')} - ${dayjs(analyticsToDate).format('D MMM')}`;
+  }, [analyticsFromDate, analyticsToDate]);
+
+  // Process the data to get latest scan per customer and statistics
+  const stats = useMemo(() => {
+    const initialStats: CustomerStats = {
+      interestedIn: { Buying: 0, Selling: 0, Financing: 0, Purchased: 0 },
+      interestStatus: { Hot: 0, Warm: 0, Cold: 0, Bought: 0 },
+      dailyScans: {}
+    };
+
+    if (!userData?.scans) return initialStats;
+
+    // If no filter is set, default to last 7 days
+    const effectiveFromDate = analyticsFromDate || dayjs().subtract(6, 'day').startOf('day').toISOString();
+    const effectiveToDate = analyticsToDate || dayjs().endOf('day').toISOString();
+
+    // Group scans by customer ID and get the latest scan for each
+    const latestScansMap = new Map();
+    userData.scans.forEach(scan => {
+      const scanDate = dayjs(scan.$createdAt);
+      const isInRange = scanDate.isBetween(dayjs(effectiveFromDate), dayjs(effectiveToDate), 'day', '[]');
+      
+      if (!isInRange) return;
+
+      const customerId = scan.customers?.$id;
+      if (!customerId) return;
+
+      const existingScan = latestScansMap.get(customerId);
+      if (!existingScan || new Date(scan.$createdAt) > new Date(existingScan.$createdAt)) {
+        latestScansMap.set(customerId, scan);
+      }
+
+      // Track daily scans
+      const scanDateStr = scanDate.format('YYYY-MM-DD');
+      initialStats.dailyScans[scanDateStr] = (initialStats.dailyScans[scanDateStr] || 0) + 1;
+    });
+
+    // Process latest scans to get statistics
+    const stats = Array.from(latestScansMap.values()).reduce((acc, scan) => {
+      if (scan.interestedIn) {
+        acc.interestedIn[scan.interestedIn as keyof typeof acc.interestedIn] = 
+          (acc.interestedIn[scan.interestedIn as keyof typeof acc.interestedIn] || 0) + 1;
+      }
+
+      if (scan.interestStatus) {
+        acc.interestStatus[scan.interestStatus as keyof typeof acc.interestStatus] = 
+          (acc.interestStatus[scan.interestStatus as keyof typeof acc.interestStatus] || 0) + 1;
+      }
+
+      return acc;
+    }, initialStats);
+
+    return stats;
+  }, [userData?.scans, analyticsFromDate, analyticsToDate]);
+
+  // Prepare data for charts
+  const interestedInData = [
+    { value: stats.interestedIn.Buying, color: '#8396FE', label: 'Buying' },
+    { value: stats.interestedIn.Selling, color: '#B3A4F6', label: 'Selling' },
+    { value: stats.interestedIn.Financing, color: '#8E72FF', label: 'Financing' },
+    { value: stats.interestedIn.Purchased, color: '#A0ABFF', label: 'Purchased' }
+  ];
+
+  const interestStatusData = [
+    { value: stats.interestStatus.Cold, color: '#8396FE', label: 'Cold' },
+    { value: stats.interestStatus.Warm, color: '#B3A4F6', label: 'Warm' },
+    { value: stats.interestStatus.Hot, color: '#8E72FF', label: 'Hot' },
+    { value: stats.interestStatus.Bought, color: '#A0ABFF', label: 'Bought' }
+  ];
+
+  // Prepare line chart data
+  const lineData = useMemo(() => {
+    // Get the date range to display
+    const fromDate = analyticsFromDate || dayjs().subtract(6, 'day').startOf('day').toISOString();
+    const toDate = analyticsToDate || dayjs().endOf('day').toISOString();
+    
+    // Calculate number of days between dates
+    const daysDiff = dayjs(toDate).diff(dayjs(fromDate), 'day') + 1;
+    
+    const dates = Array.from({ length: daysDiff }, (_, i) => {
+      return dayjs(fromDate).add(i, 'day').format('YYYY-MM-DD');
+    });
+
+    return dates.map(date => ({
+      value: stats.dailyScans[date] || 0,
+      label: dayjs(date).format('D MMM'),
+      dataPointText: stats.dailyScans[date]?.toString() || '0'
+    }));
+  }, [stats.dailyScans, analyticsFromDate, analyticsToDate]);
+
+  // Check if there's any data
+  const hasData = useMemo(() => {
+    return lineData.some(item => item.value > 0);
+  }, [lineData]);
+
+  // Calculate totals
+  const totalCustomers = Array.from(interestedInData).reduce((sum, item) => sum + item.value, 0);
+  const totalByStatus = Array.from(interestStatusData).reduce((sum, item) => sum + item.value, 0);
+
+  const handleCalendarClose = (date?: dayjs.Dayjs) => {
+    if (date) {
+      const isoDate = date.toISOString();
+      if (selectingFor === "from") {
+        setSelectingFor("from");
+      } else {
+        setSelectingFor("to");
+      }
+    }
+    setShowCalendar(false);
+  };
+
   return (
-    <ScrollView className="px-5 pt-20 pb-28">
-      <View className="flex-row justify-between items-center mt-5">
-        <Text className="text-2xl font-semibold">Analytics</Text>
-        <TouchableOpacity>
-          <FilterIcon />
-        </TouchableOpacity>
-      </View>
-        <View className="text-gray-600 mt-10 font-bold text-sm">#Scans</View>
-      <View className="mt-5">
-        <LineChart
-            data={data}
-            color="#3D12FA"
-            hideDataPoints={true}
-            noOfSections={3}
-            stepValue={60}
-            maxValue={120}
-            spacing={30}
-            width={250}
-            height={150}
-            rulesType="solid"
-            rulesColor='#E5E7EB'
-            xAxisColor={'#E5E7EB'}
-            yAxisColor={'white'}
-            yAxisTextStyle={{color: '#4b5563', fontSize: 12}}
-            
-        />
-      </View>
+    <>
+      <ScrollView className="px-5 pt-20">
+        <View className="flex-row justify-between items-center mt-5">
+          <Text className="text-2xl font-semibold">Analytics</Text>
+          <TouchableOpacity onPress={() => dispatch(showAnalyticsFilter())}>
+            <FilterIcon showCircle={!!(analyticsFromDate || analyticsToDate)} />
+          </TouchableOpacity>
+        </View>
+        <View className="mt-10">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-gray-600 font-bold text-sm">#Daily Scans</Text>
+            <Text className="text-xs text-gray-500">{getDateRangeText}</Text>
+          </View>
+        </View>
+        <View className="mt-5 -mx-5">
+          {hasData ? (
+            <LineChart
+              data={lineData}
+              color="#3D12FA"
+              hideDataPoints={false}
+              dataPointsColor="#3D12FA"
+              showValuesAsDataPointsText={true}
+              textFontSize={10}
+              noOfSections={3}
+              maxValue={Math.max(...lineData.map(d => d.value)) + 5}
+              spacing={45}
+              width={400}
+              height={150}
+              rulesType="solid"
+              rulesColor='#E5E7EB'
+              xAxisColor={'#E5E7EB'}
+              yAxisColor={'white'}
+              yAxisTextStyle={{color: '#4b5563', fontSize: 12}}
+              xAxisLabelTextStyle={{color: '#4b5563', fontSize: 10}}
+              horizontalRulesStyle={{
+                strokeDasharray: '',
+              }}
+              initialSpacing={20}
+              endSpacing={20}
+            />
+          ) : (
+            <View className="h-[150px] items-center justify-center">
+              <Text className="text-gray-500 text-sm">No scans recorded for this period</Text>
+            </View>
+          )}
+        </View>
 
-
-      {/* Lead Status Distribution */}
-      <View className="mt-10 items-center">
-        <Text className="font-semibold">Lead Status Distribution</Text>
-        <View className="mt-10 flex-row items-center gap-10">
-          <PieChart 
-            data={data2} 
-            donut  
-            radius={70}  
-            innerRadius={57} 
-            centerLabelComponent={() => {
-              return <View> <Text className="font-bold text-2xl text-color1">150</Text><Text className="font-medium text-gray-500 text-sm text-center">Total</Text> </View>;
-            }}
-          />
-          <View className="gap-3">
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#8396FE] rounded-full"/><Text className="text-xs text-gray-500">Buying <Text className="font-bold text-gray-600">23</Text></Text>
-            </View>
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#B3A4F6] rounded-full"/><Text className="text-xs text-gray-500">Selling <Text className="font-bold text-gray-600">55</Text></Text>
-            </View>
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#8E72FF] rounded-full"/><Text className="text-xs text-gray-500">Financing <Text className="font-bold text-gray-600">19</Text></Text>
-            </View>
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#A0ABFF] rounded-full"/><Text className="text-xs text-gray-500">Purchased <Text className="font-bold text-gray-600">23</Text></Text>
+        {/* Lead Status Distribution */}
+        <View className="mt-10 items-center">
+          <Text className="font-semibold">Lead Status Distribution</Text>
+          <View className="mt-10 flex-row items-center gap-10">
+            <PieChart 
+              data={interestedInData} 
+              donut  
+              radius={70}  
+              innerRadius={57} 
+              centerLabelComponent={() => {
+                return <View>
+                  <Text className="font-bold text-2xl text-color1">{totalCustomers}</Text>
+                  <Text className="font-medium text-gray-500 text-sm text-center">Total</Text>
+                </View>;
+              }}
+            />
+            <View className="gap-3">
+              {interestedInData.map((item, index) => (
+                <View key={index} className="flex-row gap-3 items-center">
+                  <View className={`w-3 h-3 rounded-full`} style={{ backgroundColor: item.color }}/>
+                  <Text className="text-xs text-gray-500">
+                    {item.label} <Text className="font-bold text-gray-600">{item.value}</Text>
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
-      </View>
 
-      {/* Customer Interest Distribution */}
-      <View className="mt-10 items-center">
-        <Text className="font-semibold">Customer Interest Distribution</Text>
-        <View className="mt-10 flex-row items-center gap-10">
-          <PieChart 
-            data={data3} 
-            donut  
-            radius={70}  
-            innerRadius={57} 
-            centerLabelComponent={() => {
-              return <View> <Text className="font-bold text-2xl text-color1">80K</Text><Text className="font-medium text-gray-500 text-sm text-center">Total</Text> </View>;
-            }}
-          />
-          <View className="gap-3">
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#8396FE] rounded-full"/><Text className="text-xs text-gray-500">Cold <Text className="font-bold text-gray-600">2.3K</Text></Text>
-            </View>
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#B3A4F6] rounded-full"/><Text className="text-xs text-gray-500">Warm <Text className="font-bold text-gray-600">5.5K</Text></Text>
-            </View>
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#8E72FF] rounded-full"/><Text className="text-xs text-gray-500">Hot <Text className="font-bold text-gray-600">19.2K</Text></Text>
-            </View>
-            <View className="flex-row gap-3 items-center">
-              <View className="w-3 h-3 bg-[#A0ABFF] rounded-full"/><Text className="text-xs text-gray-500">Bought <Text className="font-bold text-gray-600">53K</Text></Text>
+        {/* Customer Interest Distribution */}
+        <View className="mt-16 mb-64 items-center">
+          <Text className="font-semibold">Customer Interest Distribution</Text>
+          <View className="mt-10 flex-row items-center gap-10">
+            <PieChart 
+              data={interestStatusData} 
+              donut  
+              radius={70}  
+              innerRadius={57} 
+              centerLabelComponent={() => {
+                return <View>
+                  <Text className="font-bold text-2xl text-color1">{totalByStatus}</Text>
+                  <Text className="font-medium text-gray-500 text-sm text-center">Total</Text>
+                </View>;
+              }}
+            />
+            <View className="gap-3">
+              {interestStatusData.map((item, index) => (
+                <View key={index} className="flex-row gap-3 items-center">
+                  <View className={`w-3 h-3 rounded-full`} style={{ backgroundColor: item.color }}/>
+                  <Text className="text-xs text-gray-500">
+                    {item.label} <Text className="font-bold text-gray-600">{item.value}</Text>
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+        {/* Filter Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isAnalyticsFilterVisible}
+        onRequestClose={() => dispatch(hideAnalyticsFilter())}
+      >
+        <View className="flex-1 justify-end bg-transparent">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={() => dispatch(hideAnalyticsFilter())}
+          >
+            <View className="flex-1" />
+          </TouchableOpacity>
+          <View className="bg-white rounded-t-3xl" style={{ padding: 28, height: "70%" }}>
+            <AnalyticsFilter onClose={() => dispatch(hideAnalyticsFilter())} />
+          </View>
+        </View>
+      </Modal>
+      </ScrollView>
+    </>
   );
 };
 

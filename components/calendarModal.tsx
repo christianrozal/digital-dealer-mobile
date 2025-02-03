@@ -109,7 +109,7 @@ const CalendarModal = ({ onClose, initialDate, fromDate, toDate, selectingFor }:
         </View>
 
         {/* Calendar Header */}
-        <View className="flex-row justify-between items-center" style={{ marginTop: 28, marginBottom: 20 }}>
+        <View className="flex-row justify-between items-center" style={{ marginTop: 16, marginBottom: 16 }}>
           <View className="flex-row gap-3 items-center">
             <Text className="text-base font-bold">
               {currentMonth.format("MMMM YYYY")}
@@ -200,15 +200,15 @@ const CalendarModal = ({ onClose, initialDate, fromDate, toDate, selectingFor }:
         </View>
 
         {/* Time Slots Section */}
-        <View className="mt-8">
+        <View className="mt-4">
           <Text className="text-base font-bold mb-4">Available Time Slots</Text>
           <View className="flex-row mt-5" style={{ gap: 10, flexWrap: 'wrap' }}>
             {timeSlots.map((time) => (
               <TouchableOpacity
                 key={time}
                 onPress={() => handleTimeSelect(time)}
-                className={`py-2 items-center justify-center ${
-                  selectedTime === time ? 'bg-color1' : 'bg-gray-100'
+                className={`py-2 items-center border justify-center ${
+                  selectedTime === time ? 'bg-color1 border-color1' : 'border-gray-200'
                 }`}
                 style={{ width: '31%', borderRadius: 20 }}
               >

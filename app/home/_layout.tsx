@@ -31,6 +31,9 @@ const HomeLayout = () => {
     const isCustomersFilterVisible = useSelector(
         (state: RootState) => state.ui.isCustomersFilterVisible
     );
+    const isAnalyticsFilterVisible = useSelector(
+        (state: RootState) => state.ui.isAnalyticsFilterVisible
+    );
 
     const userData = useSelector((state: RootState) => state.user.data);
     const pathname = usePathname();
@@ -111,8 +114,8 @@ const HomeLayout = () => {
                         width: '100%',
                         height: '100%',
                         backgroundColor: 'black',
-                        opacity: isActivitiesFilterVisible || isCustomersFilterVisible ? 0.1 : 0,
-                        pointerEvents: isActivitiesFilterVisible || isCustomersFilterVisible ? 'auto' : 'none',
+                        opacity: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 0.1 : 0,
+                        pointerEvents: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 'auto' : 'none',
                     }}
                 />
                 {/* Header */}

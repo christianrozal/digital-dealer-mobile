@@ -666,20 +666,20 @@ const CustomerLogScreen = () => {
 
     return (
         <>
-                <View
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        zIndex: 50,
-                        width: '100%',
-                        height: '100%',
-                        backgroundColor: 'black',
-                        opacity: isCalendarModalVisible ? 0.1 : 0,
-                        pointerEvents: isCalendarModalVisible ? 'auto' : 'none',
-                    }}
-                />
-        <ScrollView ref={scrollViewRef} className='pt-7 px-7 pb-12'>
+            <View
+            style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                zIndex: 50,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'black',
+                opacity: isCalendarModalVisible ? 0.1 : 0,
+                pointerEvents: isCalendarModalVisible ? 'auto' : 'none',
+            }}
+        />
+        <ScrollView ref={scrollViewRef} className='pt-7 px-7 pb-32'>
             {/* Header */}
             <View className='flex-row w-full justify-between items-center'>
                 <TouchableOpacity onPress={() => { router.back() }}>
@@ -901,7 +901,7 @@ const CustomerLogScreen = () => {
                                                         {formatTimeOnly(assignment.date)}
                                                     </Text>
                                                 </View>
-                                                <View style={{ flex: 2 }} className="flex-row items-center justify-center gap-2">
+                                                <View style={{ flex: 2 }} className="pl-2 flex-row items-center justify-start gap-2">
                                                     {renderUserIcon(assignment.userName, assignment.profileImage)}
                                                     <Text className="text-xs">
                                                         {assignment.userName}
@@ -1066,7 +1066,7 @@ const CustomerLogScreen = () => {
                 />
 
                 {/* Back to activities button*/}
-                <ButtonComponent var2 label="Back to Activities" onPress={() => router.push("/home")} className="mt-5" />
+                <ButtonComponent var2 label="Back to Activities" onPress={() => router.push("/home")} className="mt-5 mb-20" />
             </View>
         </ScrollView>
         </>
