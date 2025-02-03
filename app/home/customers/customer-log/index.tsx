@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Alert, ActivityIndicator, Modal } from "react-native";
 import { router } from "expo-router";
 import { Checkbox } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
@@ -16,6 +16,10 @@ import { Query, ID } from "react-native-appwrite";
 import DotsIcon from "@/components/svg/dotsIcon";
 import DeleteIcon from "@/components/svg/deleteIcon";
 import EditIcon2 from "@/components/svg/editIcon2";
+import relativeTime from "dayjs/plugin/relativeTime";
+import CalendarModal from "@/components/calendarModal";
+
+dayjs.extend(relativeTime);
 
 interface User {
   $id: string;
@@ -76,6 +80,13 @@ interface Comment {
   };
 }
 
+interface AssignmentHistory {
+    date: string;
+    userId: string;
+    userName: string;
+    profileImage?: string;
+}
+
 const CustomerLogScreen = () => {
     const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
     const currentScanId = useSelector((state: RootState) => state.current.currentScan);
@@ -91,7 +102,7 @@ const CustomerLogScreen = () => {
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
     const scrollViewRef = useRef<ScrollView>(null);
     const dispatch = useDispatch();
-    const [activeTab, setActiveTab] = useState<'comments' | 'thread'>('comments');
+    const [activeTab, setActiveTab] = useState<'comments' | 'thread' | 'history'>('comments');
     const [isUpdating, setIsUpdating] = useState(false);
     const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
     const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -99,6 +110,14 @@ const CustomerLogScreen = () => {
     const [editedComment, setEditedComment] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistory[]>([]);
+    const [isLoadingThread, setIsLoadingThread] = useState(false);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [isCalendarModalVisible, setIsCalendarModalVisible] = useState(false);
+    const [selectedTime, setSelectedTime] = useState<string>();
+    const [localFollowUpDate, setLocalFollowUpDate] = useState<string | undefined>(
+        currentScan?.followUpDate
+    );
 
     useEffect(() => {
         console.log('Debug Data:', {
@@ -120,6 +139,7 @@ const CustomerLogScreen = () => {
         if (currentScan) {
             setValue(currentScan.interestStatus || null);
             setInterestedIn(currentScan.interestedIn ? [currentScan.interestedIn] : []);
+            setLocalFollowUpDate(currentScan.followUpDate);
 
             console.log('Customer Log Screen Data:', {
                 currentScanId,
@@ -174,7 +194,7 @@ const CustomerLogScreen = () => {
     const refreshComments = async () => {
         if (!currentCustomerId || isRefreshing) return;
         
-        setIsRefreshing(true);
+        setIsLoadingThread(true);
         try {
             console.log("Refreshing comments for customer:", currentCustomerId);
             
@@ -193,6 +213,7 @@ const CustomerLogScreen = () => {
             console.error("Error refreshing comments:", error);
             Alert.alert("Error", "Failed to refresh comments");
         } finally {
+            setIsLoadingThread(false);
             setIsRefreshing(false);
         }
     };
@@ -204,10 +225,53 @@ const CustomerLogScreen = () => {
         }
     }, [activeTab]);
 
-    const handleTabChange = (tab: 'comments' | 'thread') => {
+    const handleTabChange = (tab: 'comments' | 'thread' | 'history') => {
         console.log("Switching to tab:", tab);
         setActiveTab(tab);
     };
+
+    // Add this new effect to fetch assignment history
+    useEffect(() => {
+        const fetchAssignmentHistory = async () => {
+            if (!currentCustomerId) return;
+
+            setIsLoadingHistory(true);
+            try {
+                const response = await databases.listDocuments(
+                    databaseId,
+                    scansId,
+                    [
+                        Query.equal('customers', currentCustomerId),
+                        Query.orderDesc('$createdAt')
+                    ]
+                );
+
+                const assignments = new Map<string, AssignmentHistory>();
+                
+                response.documents.forEach(scan => {
+                    const userId = scan.users?.$id;
+                    if (userId && !assignments.has(userId)) {
+                        assignments.set(userId, {
+                            date: scan.$createdAt,
+                            userId: userId,
+                            userName: scan.users?.name || 'Unknown User',
+                            profileImage: scan.users?.profileImage
+                        });
+                    }
+                });
+
+                setAssignmentHistory(Array.from(assignments.values()));
+            } catch (error) {
+                console.error("Error fetching assignment history:", error);
+            } finally {
+                setIsLoadingHistory(false);
+            }
+        };
+
+        if (activeTab === 'history') {
+            fetchAssignmentHistory();
+        }
+    }, [currentCustomerId, activeTab]);
 
     if (!currentScan || !customerData) {
         return (
@@ -217,13 +281,23 @@ const CustomerLogScreen = () => {
         );
     }
 
-    const formatDate = (date: Date | null) => {
-        if(!date) {
-            return 'No scan data'
+    const formatDate = (date: Date | string | null) => {
+        if (!date) {
+            return 'No date';
         }
-        return dayjs(date).format("D MMM YYYY h:mm A");
-    };
+        const now = dayjs();
+        const commentDate = dayjs(date);
+        const diffInHours = now.diff(commentDate, 'hour');
+        const diffInDays = now.diff(commentDate, 'day');
 
+        if (diffInHours < 24) {
+            return commentDate.fromNow(); // This will show "2h ago", "30m ago", etc.
+        } else if (diffInDays < 7) {
+            return `${diffInDays}d ago`; // This will show "2d ago", "5d ago", etc.
+        } else {
+            return commentDate.format("D MMM YYYY"); // For older dates, show the full date
+        }
+    };
 
     const handleCheckboxChange = (interestType: "Buying" | "Selling" | "Financing" | "Purchased") => {
 
@@ -247,7 +321,7 @@ const CustomerLogScreen = () => {
     };
 
 
-    const handleUpdate = async () => {
+    const handleUpdate = async (additionalData?: any) => {
         setIsUpdating(true);
         try {
             if (!currentScan || !currentScan.$id) {
@@ -255,15 +329,18 @@ const CustomerLogScreen = () => {
                 return;
             }
 
-            // Update the scan document in Appwrite
+            const updateData = {
+                interestStatus: value || undefined,
+                interestedIn: interestedIn.join(','),
+                followUpDate: localFollowUpDate,
+                ...additionalData
+            };
+
             const updatedScan = await databases.updateDocument(
                 databaseId,
                 scansId,
                 currentScan.$id,
-                {
-                    interestStatus: value || undefined,
-                    interestedIn: interestedIn.join(',')
-                }
+                updateData
             );
 
             // Create comment if there's text
@@ -298,8 +375,10 @@ const CustomerLogScreen = () => {
                 }));
             }
 
-            // Switch to threads tab
-            setActiveTab('thread');
+            // Switch to threads tab if there's a new comment
+            if (comment.trim()) {
+                setActiveTab('thread');
+            }
         } catch (error) {
             console.error("Error updating:", error);
             Alert.alert("Error", "Failed to update");
@@ -463,7 +542,89 @@ const CustomerLogScreen = () => {
         }
     };
 
+    const formatTimeOnly = (date: string) => {
+        return dayjs(date).format("h:mm A");
+    };
+
+    const formatDateOnly = (date: string) => {
+        return dayjs(date).format("D MMM YYYY");
+    };
+
+    const handleCalendarClose = (date?: dayjs.Dayjs, time?: string) => {
+        console.log('Calendar Close - Received values:', {
+            date: date?.format(),
+            time,
+            isDateValid: date?.isValid(),
+            currentTime: new Date().toISOString()
+        });
+        
+        setIsCalendarModalVisible(false);
+        if (date && time) {
+            setSelectedTime(time);
+            // Parse the time string to get hours and minutes
+            const [hours, minutes] = time.match(/(\d+):(\d+)\s*(AM|PM)/i)?.slice(1) || [];
+            const period = time.match(/(AM|PM)/i)?.[0];
+            
+            console.log('Time parsing:', {
+                hours,
+                minutes,
+                period,
+                originalTime: time
+            });
+            
+            // Create a new date object and set the time
+            let newDate = date.clone();
+            let hour = parseInt(hours);
+            
+            // Convert to 24-hour format if PM
+            if (period?.toUpperCase() === 'PM' && hour !== 12) {
+                hour += 12;
+            } else if (period?.toUpperCase() === 'AM' && hour === 12) {
+                hour = 0;
+            }
+            
+            newDate = newDate.hour(hour).minute(parseInt(minutes)).second(0);
+            
+            console.log('Final datetime:', {
+                original: time,
+                parsed: newDate.format('YYYY-MM-DDTHH:mm:ss'),
+                hour,
+                minutes,
+                isNewDateValid: newDate.isValid()
+            });
+            
+            setLocalFollowUpDate(newDate.format('YYYY-MM-DDTHH:mm:ss'));
+            
+            // Log the state after update
+            console.log('State after update:', {
+                localFollowUpDate: newDate.format('YYYY-MM-DDTHH:mm:ss'),
+                selectedTime: time
+            });
+        }
+    };
+
+    const formatDisplayDateTime = (dateTimeStr: string | undefined) => {
+        if (!dateTimeStr) return 'Select date and time';
+        const dt = dayjs(dateTimeStr);
+        if (!dt.isValid()) return 'Select date and time';
+        return `${dt.format('D MMM YYYY')} at ${dt.format('h:mm A')}`;
+    };
+
     return (
+        <>
+                <View
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        zIndex: 50,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'black',
+                        opacity: isCalendarModalVisible ? 0.1 : 0,
+                        pointerEvents: isCalendarModalVisible ? 'auto' : 'none',
+                    }}
+                />
         <ScrollView ref={scrollViewRef} className='pt-7 px-7 pb-12'>
             {/* Header */}
             <View className='flex-row w-full justify-between items-center'>
@@ -580,34 +741,46 @@ const CustomerLogScreen = () => {
                 <View className="mt-5">
                     <Text className="text-[10px] text-gray-500">Follow Up Date</Text>
                     <TouchableOpacity
-                        style={{
-                            borderWidth: 1,
-                            borderColor: "gray",
-                            borderRadius: 5,
-                            padding: 10,
-                        }}
-                        className="mt-3"
-                        // onPress={showDatePicker} // Removed onPress
+    
+                        className="mt-3 rounded-md bg-color3 py-3 px-4"
+                        onPress={() => setIsCalendarModalVisible(true)}
                     >
                         <View className="flex-row justify-between items-center">
                             <Text className="text-xs">
-                            {formatDate(currentScan?.followUpDate ? new Date(currentScan.followUpDate) : null)}
+                                {formatDisplayDateTime(localFollowUpDate)}
                             </Text>
                             <Calendar2Icon width={16} height={16} />
                         </View>
                     </TouchableOpacity>
-                      {/* <DateTimePickerModal // Removed
-                           isVisible={isDatePickerVisible}
-                            mode="date"
-                            onConfirm={handleConfirm}
-                            onCancel={hideDatePicker}
-                        /> */}
+                    {/* Calendar Modal */}
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={isCalendarModalVisible}
+                    >
+                        <View className="flex-1 justify-end bg-transparent">
+                            <TouchableOpacity
+                                className="flex-1"
+                                activeOpacity={1}
+                                onPress={() => setIsCalendarModalVisible(false)}
+                            >
+                                <View className="flex-1" />
+                            </TouchableOpacity>
+                            <View className="bg-white rounded-t-3xl" style={{ padding: 28, height: "80%" }}>
+                                <CalendarModal
+                                    onClose={handleCalendarClose}
+                                    initialDate={currentScan?.followUpDate ? dayjs(currentScan.followUpDate) : undefined}
+                                    selectingFor="from"
+                                />
+                            </View>
+                        </View>
+                    </Modal>
                 </View>
 
                 {/* Comments and Thread Section */}
                 <View className="mt-10">
                     {/* Tab Buttons */}
-                    <View className="flex-row gap-5">
+                    <View className="flex-row gap-2 justify-between">
                         <TouchableOpacity 
                             className={`py-2 px-4 rounded-full ${activeTab === 'comments' ? 'bg-color3' : ''}`}
                             onPress={() => handleTabChange('comments')}
@@ -624,11 +797,70 @@ const CustomerLogScreen = () => {
                                 Thread
                             </Text>
                         </TouchableOpacity>
+                        <TouchableOpacity 
+                            className={`py-2 px-4 rounded-full ${activeTab === 'history' ? 'bg-color3' : ''}`}
+                            onPress={() => handleTabChange('history')}
+                        >
+                            <Text className={`text-black text-[10px] text-center font-semibold`}>
+                                Assignment History
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Tab Content */}
-                    {activeTab === 'comments' ? (
-                        <View className="mt-3">
+                    {activeTab === 'history' ? (
+                        <View className="mt-5">
+                            {isLoadingHistory ? (
+                                <View className="flex-row justify-center items-center py-8">
+                                    <ActivityIndicator size="large" color="#3D12FA" />
+                                </View>
+                            ) : assignmentHistory.length === 0 ? (
+                                <View className="bg-color3 rounded-md p-4">
+                                    <Text className="text-gray-500 text-xs">No assignment history</Text>
+                                </View>
+                            ) : (
+                                <View>
+                                    {/* Table Header */}
+                                    <View className="flex-row border-y border-gray-200 py-2">
+                                        <View style={{ flex: 1 }} className="flex-row items-center justify-center">
+                                            <Text className="text-[10px] text-gray-500 font-medium text-center">Date</Text>
+                                        </View>
+                                        <View style={{ flex: 1 }} className="flex-row items-center justify-center">
+                                            <Text className="text-[10px] text-gray-500 font-medium text-center">Time</Text>
+                                        </View>
+                                        <View style={{ flex: 2 }} className="flex-row items-center justify-center">
+                                            <Text className="text-[10px] text-gray-500 font-medium text-center">Assigned to</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Table Content */}
+                                    <View className="gap-2 mt-2">
+                                        {assignmentHistory.map((assignment, index) => (
+                                            <View key={index} className="flex-row py-3 border-b border-gray-100">
+                                                <View style={{ flex: 1 }} className="flex-row items-center justify-center">
+                                                    <Text className="text-xs">
+                                                        {formatDateOnly(assignment.date)}
+                                                    </Text>
+                                                </View>
+                                                <View style={{ flex: 1 }} className="flex-row items-center justify-center">
+                                                    <Text className="text-xs">
+                                                        {formatTimeOnly(assignment.date)}
+                                                    </Text>
+                                                </View>
+                                                <View style={{ flex: 2 }} className="flex-row items-center justify-center gap-2">
+                                                    {renderUserIcon(assignment.userName, assignment.profileImage)}
+                                                    <Text className="text-xs">
+                                                        {assignment.userName}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    ) : activeTab === 'comments' ? (
+                        <View className="mt-5">
                             <TextInput
                                 placeholder="Add your comment"
                                 multiline={true}
@@ -639,8 +871,12 @@ const CustomerLogScreen = () => {
                             />
                         </View>
                     ) : (
-                        <View className="mt-3">
-                            {comments.length === 0 ? (
+                        <View className="mt-5">
+                            {isLoadingThread ? (
+                                <View className="flex-row justify-center items-center py-8">
+                                    <ActivityIndicator size="large" color="#3D12FA" />
+                                </View>
+                            ) : comments.length === 0 ? (
                                 <View className="bg-color3 rounded-md p-4">
                                     <Text className="text-gray-500 text-xs">No comments yet</Text>
                                 </View>
@@ -769,7 +1005,7 @@ const CustomerLogScreen = () => {
                 {/* Update button */}
                 <ButtonComponent 
                     label={isUpdating ? "Updating..." : "Update"} 
-                    onPress={handleUpdate} 
+                    onPress={() => handleUpdate()} 
                     className="mt-10"
                     loading={isUpdating}
                     disabled={isUpdating}
@@ -779,6 +1015,7 @@ const CustomerLogScreen = () => {
                 <ButtonComponent var2 label="Back to Activities" onPress={() => router.push("/home")} className="mt-5" />
             </View>
         </ScrollView>
+        </>
     );
 };
 
