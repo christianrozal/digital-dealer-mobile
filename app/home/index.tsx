@@ -14,9 +14,6 @@ import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { router } from "expo-router";
 import { setCurrentScan, setCurrentCustomer } from '@/lib/store/currentSlice';
 import ActivitiesFilter from "@/components/activitiesFilter";
-import { databases, databaseId, scansId, usersId } from "@/lib/appwrite";
-import { Query } from "appwrite";
-import { setUserData } from "@/lib/store/userSlice";
 
 interface Scan {
   $id: string;
@@ -268,20 +265,19 @@ const HomeScreen = () => {
                 key={scan.$id} 
                 className="bg-white rounded-lg border border-gray-200"
                 onPress={() => {
-                  const customerForActivity = {
-                    ...scan.customers,
-                    lastScanned: scan.$createdAt,
-                    scanCount: 1,
-                    interestStatus: scan.interestStatus,
-                    interestedIn: scan.interestedIn
-                  };
+                  // Find the latest scan for this customer
+                  const customerScans = scans.filter(s => s.customers?.$id === scan.customers?.$id);
+                  const latestScan = customerScans.reduce<Scan | null>((latest, current) => {
+                    if (!latest) return current;
+                    return new Date(current.$createdAt) > new Date(latest.$createdAt) ? current : latest;
+                  }, null);
 
                   console.log('Selected from Home Screen:', {
                     scan: {
-                      id: scan.$id,
-                      createdAt: scan.$createdAt,
-                      interestStatus: scan.interestStatus,
-                      interestedIn: scan.interestedIn
+                      id: latestScan?.$id || scan.$id,
+                      createdAt: latestScan?.$createdAt || scan.$createdAt,
+                      interestStatus: latestScan?.interestStatus || scan.interestStatus,
+                      interestedIn: latestScan?.interestedIn || scan.interestedIn
                     },
                     customer: {
                       id: scan.customers?.$id,
@@ -289,8 +285,7 @@ const HomeScreen = () => {
                     }
                   });
 
-                  dispatch(setSelectedCustomer(customerForActivity));
-                  dispatch(setCurrentScan(scan.$id));
+                  dispatch(setCurrentScan(latestScan?.$id || scan.$id));
                   dispatch(setCurrentCustomer(scan.customers?.$id));
                   
                   router.push("/home/customers/customer-details");
@@ -311,9 +306,11 @@ const HomeScreen = () => {
                           </Text>
                         )}
                       </View>
-                      <Text className="font-bold text-sm">
-                        {scan.customers?.name || "Unknown Customer"}
-                      </Text>
+                      <View>
+                        <Text className="font-bold text-sm">
+                          {scan.customers?.name || "Unknown Customer"}
+                        </Text>
+                      </View>
                     </View>
                     <View className="flex-row gap-1">
                       <Text

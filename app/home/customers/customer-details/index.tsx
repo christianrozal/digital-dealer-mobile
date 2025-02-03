@@ -15,20 +15,22 @@ import EditIcon from '@/components/svg/editIcon';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 import SuccessAnimation from '@/components/successAnimation'; // Assume this exists
 
-interface Customer {
-   id: string;
-   name?: string;
-   email?: string;
-   phone?: string;
-   profileImage?: string;
-   interestStatus?: string;
-   interestedIn?: string;
+interface CustomerData {
+
+  $id?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  profileImage?: string;
+  interestStatus?: string;
+  interestedIn?: string;
+  [key: string]: any;
 }
 
 interface Scan {
     $id: string;
     $createdAt: string;
-    customers: Customer;
+    customers: CustomerData;
     interestStatus?: string;
     interestedIn?: string;
     followUpDate?: string;
@@ -48,6 +50,18 @@ const SelectedCustomerScreen = () => {
   // Find the current scan and customer data from userSlice
   const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
   const customerData = currentScan?.customers;
+
+  // Calculate scan count from userData.scans using currentCustomerId
+  const scanCount = userData?.scans?.filter(scan => {
+    const scanCustomerId = scan.customers?.$id;
+    console.log('Scan comparison:', {
+      scanRawCustomers: scan.customers,
+      scanCustomerId,
+      currentCustomerId,
+      match: scanCustomerId === currentCustomerId
+    });
+    return scanCustomerId === currentCustomerId;
+  }).length || 0;
 
   useFocusEffect(
     useCallback(() => {
@@ -78,7 +92,7 @@ const SelectedCustomerScreen = () => {
         customer: currentScan.customers
       } : null
     });
-  }, [currentScan, currentScanId, currentCustomerId]);
+  }, [currentScan, currentScanId, currentCustomerId, userData?.scans]);
 
   if (!currentScan || !customerData) {
     return (
@@ -151,7 +165,7 @@ const SelectedCustomerScreen = () => {
               </View>
               <Text className="text-2xl font-semibold mt-3">{customerData.name || 'Customer Name'}</Text>
               <View className="flex-row items-center mt-2 gap-[10px]">
-                <Text className='text-xs text-gray-500'>#scans: {currentScan.scanCount || 1}</Text>
+                <Text className='text-xs text-gray-500'>#scans: {scanCount}</Text>
                 <View className="flex-row gap-2">
                   <Text
                     className={`rounded-full text-[10px] border font-semibold px-2 py-0.5 ${

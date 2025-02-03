@@ -8,10 +8,11 @@ import { RootState } from "@/lib/store/store";
 import BackArrowIcon from "@/components/svg/backArrow";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ChevronDownIcon from "@/components/svg/chevronDown";
-import { databases, databaseId, usersId, dealershipLevel2Id, dealershipLevel3Id, scansId } from "@/lib/appwrite";
-import { Query } from "appwrite";
+import { databases, databaseId, usersId, dealershipLevel2Id, dealershipLevel3Id, scansId, notificationsId } from "@/lib/appwrite";
+import { Query, ID } from "appwrite";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
+import { Alert } from "react-native";
 
 // Define interfaces at the top of the file
 interface User {
@@ -167,6 +168,14 @@ const CustomerAssignmentScreen = () => {
         return;
       }
 
+      // Debug customer object structure
+      console.log("Customer object structure:", {
+        customer,
+        id: customer.id,
+        $id: customer.$id,
+        fullCustomer: JSON.stringify(customer)
+      });
+
       // Find the selected user's full data from allUsers
       const selectedUser = allUsers.find(user => user.name === selectedName);
       if (!selectedUser) {
@@ -174,7 +183,11 @@ const CustomerAssignmentScreen = () => {
         return;
       }
 
-      console.log("Assigning user:", selectedUser, "to customer:", customer);
+      console.log("Starting assignment process:", {
+        selectedUser,
+        customer,
+        currentScans: customer.scans
+      });
 
       // Get the latest scan (assuming it's the first one in the array)
       const latestScan = customer.scans?.[0];
@@ -183,51 +196,92 @@ const CustomerAssignmentScreen = () => {
         return;
       }
 
-      // Update the scan with the selected user
-      const updatedScan = await databases.updateDocument(
-        databaseId,
-        scansId,
-        latestScan.$id,
-        {
-          users: selectedUser.$id // Update the users field with the selected user's ID
-        }
-      );
-
-      console.log("Successfully updated scan:", updatedScan);
-
-      // Update the Redux store with the updated scan
-      if (customer.scans) {
-        const updatedCustomer = {
-          ...customer,
-          scans: [
-            {
-              ...latestScan,
-              users: selectedUser.$id,
-              user: selectedUser // Include the expanded user data
-            },
-            ...customer.scans.slice(1)
-          ]
-        };
-
-        // First dispatch all Redux updates
-        dispatch(setSelectedCustomer(updatedCustomer));
-        dispatch(setCurrentScan(latestScan.$id));
-        dispatch(setCurrentCustomer(customer.$id));
-
-        // Add a small delay to ensure Redux state is updated
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Then navigate
-        router.push("/home/customers/customer-log");
+      try {
+        // Update the scan with the selected user
+        const updatedScan = await databases.updateDocument(
+          databaseId,
+          scansId,
+          latestScan.$id,
+          {
+            users: selectedUser.$id // Update the users field with the selected user's ID
+          }
+        );
+        console.log("Successfully updated scan:", updatedScan);
+      } catch (error) {
+        console.error("Error updating scan document:", error);
+        throw error;
       }
+
+      try {
+        // Determine notification type and create notification
+        const notificationType = customer.scans?.length > 1 ? 'reassigned' : 'first_assigned';
+        const customerId = customer.id || customer.$id; // Try both possible ID fields
+        
+        if (!customerId) {
+          console.error("Could not find customer ID:", customer);
+          throw new Error("Customer ID is missing");
+        }
+
+        console.log("Creating notification:", {
+          type: notificationType,
+          userId: selectedUser.$id,
+          customerId
+        });
+
+        // Create notification with proper relationship format
+        const notification = await databases.createDocument(
+          databaseId,
+          notificationsId,
+          ID.unique(),
+          {
+            type: notificationType,
+            read: false,
+            users: [selectedUser.$id],  // Keep as array since that's the correct format
+            customers: [customerId]     // Use the found customer ID
+          }
+        );
+        console.log("Successfully created notification:", notification);
+      } catch (error) {
+        console.error("Error creating notification:", error);
+        throw error;
+      }
+
+      // Update Redux store with current scan and customer IDs
+      const customerIdForRedux = customer.id || customer.$id;
+      console.log("Updating Redux store:", {
+        scanId: latestScan.$id,
+        customerId: customerIdForRedux
+      });
+      
+      dispatch(setCurrentScan(latestScan.$id));
+      dispatch(setCurrentCustomer(customerIdForRedux));
+
+      // Add a small delay to ensure Redux state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log("Navigation to customer log starting...");
+      router.push("/home/customers/customer-log");
+
     } catch (error) {
-      console.error("Error updating scan:", error);
+      console.error("Error in assignment process:", error);
+      Alert.alert(
+        "Error",
+        "Failed to complete the assignment process. Please try again."
+      );
     } finally {
       setIsAssigning(false);
     }
   };
 
   const renderPriorUsers = () => {
+    if (isLoading) {
+      return (
+        <View className="placeholder:text-gray-500 bg-color3 rounded-md py-3 px-4 mt-1 w-full">
+          <Text className="text-xs">Loading prior consultants...</Text>
+        </View>
+      );
+    }
+
     console.log('Rendering prior users with data:', {
       customerScans: customer?.scans,
       currentUserName: userData?.name,
@@ -262,6 +316,7 @@ const CustomerAssignmentScreen = () => {
           }
         }
       });
+      
 
       const uniquePriorUserNames = Array.from(priorUserNames);
       console.log('Final prior user names:', uniquePriorUserNames);

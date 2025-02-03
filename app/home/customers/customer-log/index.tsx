@@ -42,7 +42,7 @@ interface Scan {
 }
 
 interface CustomerData {
-  id: string;
+  $id: string;
   name?: string;
   phone?: string;
   email?: string;
@@ -54,7 +54,7 @@ interface CustomerData {
 }
 
 interface Customer {
-  id: string;
+  $id: string;
   name?: string;
   phone?: string;
   email?: string;
@@ -93,36 +93,110 @@ const CustomerLogScreen = () => {
     const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
     const currentScanId = useSelector((state: RootState) => state.current.currentScan);
     const userData = useSelector((state: RootState) => state.user.data);
-    const selectedCustomer = useSelector((state: RootState) => state.customer.selectedCustomer);
 
     // Find the current scan and customer data from userSlice
     const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
     
-    // Get customer data from either the scan or selectedCustomer
-    const customerData = selectedCustomer || currentScan?.customers;
+    // Get customer data directly from the scan
+    const customerData = currentScan?.customers;
 
     // Log detailed data for debugging
     useEffect(() => {
         console.log('CustomerLogScreen - Detailed Data:', {
             currentCustomerId,
             currentScanId,
-            selectedCustomer: selectedCustomer ? {
-                id: selectedCustomer.id,
-                name: selectedCustomer.name
-            } : null,
             currentScan: currentScan ? {
                 id: currentScan.$id,
-                customerId: currentScan.customers,
+                customerId: currentScan.customers?.$id,
                 customerData: currentScan.customers
             } : null,
             finalCustomerData: customerData
         });
 
         // If we don't have currentCustomerId but we have customerData, update it
-        if (!currentCustomerId && customerData?.id) {
-            dispatch(setCurrentCustomer(String(customerData.id)));
+        if (!currentCustomerId && customerData?.$id) {
+            dispatch(setCurrentCustomer(String(customerData.$id)));
         }
-    }, [currentCustomerId, currentScanId, selectedCustomer, currentScan, customerData]);
+    }, [currentCustomerId, currentScanId, currentScan, customerData]);
+
+    // Fetch both comments and assignment history when component loads
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!currentCustomerId) {
+                console.log("No customer ID available for fetching data");
+                return;
+            }
+
+            setIsLoadingThread(true);
+            setIsLoadingHistory(true);
+
+            try {
+                // Fetch comments
+                console.log("Fetching comments for customer:", currentCustomerId);
+                const commentsResponse = await databases.listDocuments(
+                    databaseId,
+                    commentsId,
+                    [
+                        Query.equal('customers', currentCustomerId),
+                        Query.orderDesc('$createdAt')
+                    ]
+                );
+                console.log("Fetched customer comments:", commentsResponse.documents);
+                setComments(commentsResponse.documents as unknown as Comment[]);
+
+                // Fetch assignment history
+                console.log('Fetching assignment history for customer:', currentCustomerId);
+                const scansResponse = await databases.listDocuments(
+                    databaseId,
+                    scansId,
+                    [
+                        Query.equal('customers', currentCustomerId),
+                        Query.orderDesc('$createdAt')
+                    ]
+                );
+
+                // Process assignments chronologically from oldest to newest
+                const assignments: AssignmentHistory[] = [];
+                let lastAssignedUserId: string | null = null;
+
+                // Reverse the array to process from oldest to newest
+                const orderedScans = [...scansResponse.documents].reverse();
+
+                for (let i = 0; i < orderedScans.length; i++) {
+                    const scan = orderedScans[i];
+                    const userId = typeof scan.users === 'string' ? scan.users : scan.users?.$id;
+                    
+                    // Add to history if:
+                    // 1. This is the first scan (i === 0), or
+                    // 2. The user is different from the last assigned user
+                    if (userId && (i === 0 || userId !== lastAssignedUserId)) {
+                        assignments.push({
+                            date: scan.$createdAt,
+                            userId: userId,
+                            userName: scan.users?.name || 'Unknown User',
+                            profileImage: scan.users?.profileImage
+                        });
+                        lastAssignedUserId = userId;
+                    }
+                }
+
+                // Sort by date in descending order (newest first)
+                assignments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                console.log('Final assignment history:', assignments);
+                setAssignmentHistory(assignments);
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                Alert.alert("Error", "Failed to fetch data");
+            } finally {
+                setIsLoadingThread(false);
+                setIsLoadingHistory(false);
+            }
+        };
+
+        fetchData();
+    }, [currentCustomerId]);
 
     const [comments, setComments] = useState<Comment[]>([]);
     const [comment, setComment] = useState('');
@@ -137,10 +211,9 @@ const CustomerLogScreen = () => {
     const [showOptions, setShowOptions] = useState<string | null>(null);
     const [editedComment, setEditedComment] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistory[]>([]);
     const [isLoadingThread, setIsLoadingThread] = useState(false);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistory[]>([]);
     const [isCalendarModalVisible, setIsCalendarModalVisible] = useState(false);
     const [selectedTime, setSelectedTime] = useState<string>();
     const [localFollowUpDate, setLocalFollowUpDate] = useState<string | undefined>(
@@ -182,149 +255,16 @@ const CustomerLogScreen = () => {
         }
     }, [currentScan, currentScanId, currentCustomerId]);
 
-    // Fetch comments when screen loads
-    useEffect(() => {
-        const fetchComments = async () => {
-            if (!currentCustomerId) {
-                console.log("No customer ID available for fetching comments");
-                return;
-            }
-
-            try {
-                console.log("Fetching comments for customer:", currentCustomerId);
-                
-                const response = await databases.listDocuments(
-                    databaseId,
-                    commentsId,
-                    [
-                        Query.equal('customers', currentCustomerId),
-                        Query.orderDesc('$createdAt')
-                    ]
-                );
-
-                console.log("Fetched customer comments:", response.documents);
-                setComments(response.documents as unknown as Comment[]);
-            } catch (error) {
-                console.error("Error fetching comments:", error);
-                Alert.alert("Error", "Failed to fetch comments");
-            }
-        };
-
-        fetchComments();
-    }, [currentCustomerId, userData?.dealershipLevel1]);
-
     // Add debugging for tab changes
     useEffect(() => {
         console.log("Active tab changed to:", activeTab);
         console.log("Current comments:", comments);
     }, [activeTab, comments]);
 
-    const refreshComments = async () => {
-        if (!currentCustomerId || isRefreshing) return;
-        
-        setIsLoadingThread(true);
-        try {
-            console.log("Refreshing comments for customer:", currentCustomerId);
-            
-            const response = await databases.listDocuments(
-                databaseId,
-                commentsId,
-                [
-                    Query.equal('customers', currentCustomerId),
-                    Query.orderDesc('$createdAt')
-                ]
-            );
-
-            console.log("Fetched customer comments:", response.documents);
-            setComments(response.documents as unknown as Comment[]);
-        } catch (error) {
-            console.error("Error refreshing comments:", error);
-            Alert.alert("Error", "Failed to refresh comments");
-        } finally {
-            setIsLoadingThread(false);
-            setIsRefreshing(false);
-        }
-    };
-
-    // Refresh comments when switching to thread tab
-    useEffect(() => {
-        if (activeTab === 'thread') {
-            refreshComments();
-        }
-    }, [activeTab]);
-
     const handleTabChange = (tab: 'comments' | 'thread' | 'history') => {
         console.log("Switching to tab:", tab);
         setActiveTab(tab);
     };
-
-    // Add this new effect to fetch assignment history
-    useEffect(() => {
-        const fetchAssignmentHistory = async () => {
-            if (!currentCustomerId) return;
-
-            setIsLoadingHistory(true);
-            try {
-                console.log('Fetching assignment history for customer:', currentCustomerId);
-                
-                const response = await databases.listDocuments(
-                    databaseId,
-                    scansId,
-                    [
-                        Query.equal('customers', currentCustomerId),
-                        Query.orderDesc('$createdAt')
-                    ]
-                );
-
-                console.log('All scans for this customer:', response.documents.map(scan => ({
-                    scanId: scan.$id,
-                    createdAt: scan.$createdAt,
-                    userId: scan.users?.$id,
-                    userName: scan.users?.name,
-                })));
-
-                // Process assignments chronologically from oldest to newest
-                const assignments: AssignmentHistory[] = [];
-                let lastAssignedUserId: string | null = null;
-
-                // Reverse the array to process from oldest to newest
-                const orderedScans = [...response.documents].reverse();
-
-                for (let i = 0; i < orderedScans.length; i++) {
-                    const scan = orderedScans[i];
-                    const userId = scan.users?.$id;
-                    const prevScan = orderedScans[i - 1];
-                    const prevUserId = prevScan?.users?.$id;
-
-                    // Add to history if:
-                    // 1. This is the first scan (i === 0), or
-                    // 2. The user is different from the previous scan's user
-                    if (userId && (i === 0 || userId !== prevUserId)) {
-                        assignments.push({
-                            date: scan.$createdAt,
-                            userId: userId,
-                            userName: scan.users?.name || 'Unknown User',
-                            profileImage: scan.users?.profileImage
-                        });
-                    }
-                }
-
-                // Sort by date in descending order (newest first)
-                assignments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                console.log('Final assignment history:', assignments);
-                setAssignmentHistory(assignments);
-            } catch (error) {
-                console.error("Error fetching assignment history:", error);
-            } finally {
-                setIsLoadingHistory(false);
-            }
-        };
-
-        if (activeTab === 'history') {
-            fetchAssignmentHistory();
-        }
-    }, [currentCustomerId, activeTab]);
 
     if (!currentScan || !customerData) {
         return (
@@ -375,24 +315,22 @@ const CustomerLogScreen = () => {
 
 
     const handleUpdate = async (additionalData?: any) => {
+        if (isUpdating || !currentScanId) return;
         setIsUpdating(true);
-        try {
-            if (!currentScan || !currentScan.$id) {
-                console.error("No current scan found");
-                return;
-            }
 
+        try {
+            // Update scan
             const updateData = {
-                interestStatus: value || undefined,
-                interestedIn: interestedIn.join(','),
+                interestStatus: value,
+                interestedIn: interestedIn[0] || null,
                 followUpDate: localFollowUpDate,
                 ...additionalData
             };
 
-            const updatedScan = await databases.updateDocument(
+            const response = await databases.updateDocument(
                 databaseId,
                 scansId,
-                currentScan.$id,
+                currentScanId,
                 updateData
             );
 
@@ -409,32 +347,77 @@ const CustomerLogScreen = () => {
                     }
                 );
 
-                setComment(''); // Clear input
-                await refreshComments(); // Refresh comments after adding new one
-            }
-
-            // Update the scan in userData.scans
-            if (userData?.scans) {
-                const updatedScans = userData.scans.map(scan => 
-                    scan.$id === currentScan.$id ? {
-                        ...scan,
-                        ...updatedScan
-                    } : scan
+                // Clear comment input
+                setComment('');
+                
+                // Fetch updated comments
+                const commentsResponse = await databases.listDocuments(
+                    databaseId,
+                    commentsId,
+                    [
+                        Query.equal('customers', currentCustomerId),
+                        Query.orderDesc('$createdAt')
+                    ]
                 );
-
-                dispatch(setUserData({
-                    ...userData,
-                    scans: updatedScans
-                }));
-            }
-
-            // Switch to threads tab if there's a new comment
-            if (comment.trim()) {
+                setComments(commentsResponse.documents as unknown as Comment[]);
+                
+                // Switch to thread tab after adding comment
                 setActiveTab('thread');
             }
+
+            // Update userData in Redux
+            if (userData && userData.scans) {
+                const updatedScans = userData.scans.map(scan =>
+                    scan.$id === currentScanId ? { ...scan, ...updateData } : scan
+                );
+                dispatch(setUserData({ ...userData, scans: updatedScans }));
+            }
+
+            // Fetch updated thread data
+            if (currentCustomerId) {
+                const scansResponse = await databases.listDocuments(
+                    databaseId,
+                    scansId,
+                    [
+                        Query.equal('customers', currentCustomerId),
+                        Query.orderDesc('$createdAt')
+                    ]
+                );
+
+                // Process assignments chronologically from oldest to newest
+                const assignments: AssignmentHistory[] = [];
+                let lastAssignedUserId: string | null = null;
+
+                // Reverse the array to process from oldest to newest
+                const orderedScans = [...scansResponse.documents].reverse();
+
+                for (let i = 0; i < orderedScans.length; i++) {
+                    const scan = orderedScans[i];
+                    const userId = typeof scan.users === 'string' ? scan.users : scan.users?.$id;
+                    
+                    // Add to history if:
+                    // 1. This is the first scan (i === 0), or
+                    // 2. The user is different from the last assigned user
+                    if (userId && (i === 0 || userId !== lastAssignedUserId)) {
+                        assignments.push({
+                            date: scan.$createdAt,
+                            userId: userId,
+                            userName: scan.users?.name || 'Unknown User',
+                            profileImage: scan.users?.profileImage
+                        });
+                        lastAssignedUserId = userId;
+                    }
+                }
+
+                // Sort by date in descending order (newest first)
+                assignments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setAssignmentHistory(assignments);
+            }
+
+            console.log('Scan updated successfully:', response);
         } catch (error) {
-            console.error("Error updating:", error);
-            Alert.alert("Error", "Failed to update");
+            console.error('Error updating scan:', error);
+            Alert.alert('Error', 'Failed to update scan');
         } finally {
             setIsUpdating(false);
         }
