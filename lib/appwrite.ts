@@ -11,6 +11,7 @@ const appointmentsId = "679e2e5100067db83558"
 const scansId = "679ecbf70002356cd404";
 const bucketId = '679a6a24003b707de5c0';
 const commentsId = "679f542d003a902cd072";
+const notificationsId = "679b07c8002bd61a8f67";
 
 const client = new Client()
     .setEndpoint("https://cloud.appwrite.io/v1")
@@ -35,5 +36,6 @@ export {
     appointmentsId,
     scansId,
     bucketId,
-    commentsId
+    commentsId,
+    notificationsId
 };

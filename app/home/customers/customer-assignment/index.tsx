@@ -17,14 +17,15 @@ import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
 interface User {
   $id: string;
   name: string;
-  [key: string]: any; // For other properties
+  profileImage?: string;
+  [key: string]: any;
 }
 
 interface Scan {
     $id: string;
-    users: string; // This is the user ID
+    users: string | { $id: string; name?: string; [key: string]: any };
     $createdAt: string;
-    user?: { // This is the expanded user data
+    user?: {
       $id: string;
       name: string;
       [key: string]: any;
@@ -43,10 +44,12 @@ const CustomerAssignmentScreen = () => {
   const [allUsers, setAllUsers] = useState<any[]>([]); // State to hold users list
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const dispatch = useDispatch();
 
   useEffect(() => {
     const fetchDealershipUsers = async () => {
+      setIsLoading(true);
       try {
         if (!userData || !userData.$id) {
           console.error("No user data or user ID available");
@@ -86,17 +89,28 @@ const CustomerAssignmentScreen = () => {
         const dealershipUsers = dealershipResponse.users || [];
         const currentUser = {
           $id: userData.$id,
-          name: userData.name
+          name: userData.name,
+          profileImage: userData.profileImage
         };
         
         // Include current user and other users
-        const allDealershipUsers = [currentUser, ...dealershipUsers.filter((user: User) => user.$id !== userData.$id)];
+        const allDealershipUsers = [
+          currentUser, 
+          ...dealershipUsers.filter((user: User) => user.$id !== userData.$id)
+            .map((user: User) => ({
+              $id: user.$id,
+              name: user.name,
+              profileImage: user.profileImage
+            }))
+        ];
         
         console.log("All dealership users (including current):", allDealershipUsers);
         setAllUsers(allDealershipUsers);
       } catch (error) {
         console.error("Error fetching dealership users:", error);
         setAllUsers([]); // Reset to empty array on error
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -121,9 +135,26 @@ const CustomerAssignmentScreen = () => {
         className={`px-5 py-3 bg-white ${selectedName === user.name ? 'bg-gray-100' : ''}`}
         onPress={() => handleNameSelection(user.name)}
       >
-        <Text className={`text-sm ${selectedName === user.name ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
-          {user.name}
-        </Text>
+        <View className="flex-row items-center gap-2">
+          {user.profileImage && user.profileImage !== 'black' ? (
+            <Image
+              source={{ uri: user.profileImage }}
+              style={{ width: 24, height: 24, borderRadius: 12 }}
+            />
+          ) : (
+            <View
+              className="bg-color1 rounded-full flex items-center justify-center"
+              style={{ width: 24, height: 24 }}
+            >
+              <Text className="text-white text-[10px] font-bold">
+                {getInitials(user.name)}
+              </Text>
+            </View>
+          )}
+          <Text className={`text-sm ${selectedName === user.name ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+            {user.name}
+          </Text>
+        </View>
       </TouchableOpacity>
     ));
   };
@@ -177,12 +208,18 @@ const CustomerAssignmentScreen = () => {
             ...customer.scans.slice(1)
           ]
         };
+
+        // First dispatch all Redux updates
         dispatch(setSelectedCustomer(updatedCustomer));
         dispatch(setCurrentScan(latestScan.$id));
         dispatch(setCurrentCustomer(customer.$id));
-      }
 
-      router.push("/home/customers/customer-log");
+        // Add a small delay to ensure Redux state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Then navigate
+        router.push("/home/customers/customer-log");
+      }
     } catch (error) {
       console.error("Error updating scan:", error);
     } finally {
@@ -191,17 +228,43 @@ const CustomerAssignmentScreen = () => {
   };
 
   const renderPriorUsers = () => {
+    console.log('Rendering prior users with data:', {
+      customerScans: customer?.scans,
+      currentUserName: userData?.name,
+      allUsers
+    });
+
     if (customer?.scans && customer.scans.length > 0) {
       const priorUserNames = new Set<string>(); // Use Set to avoid duplicates
 
       customer.scans.forEach((scan: Scan) => {
-        // Check both expanded user data and direct user reference
+        // Get the user ID - handle both string and object cases
+        const userId = typeof scan.users === 'string' ? scan.users : scan.users?.$id;
+        
+        console.log('Processing scan:', {
+          scanId: scan.$id,
+          scanUser: scan.user,
+          scanUserId: userId,
+          scanUsersRaw: scan.users,
+          foundUser: userId ? allUsers.find(u => u.$id === userId) : null
+        });
+
+        // Check both expanded user data and user ID
         if (scan.user?.name && scan.user.name !== userData?.name) {
+          console.log('Adding user from scan.user:', scan.user.name);
           priorUserNames.add(scan.user.name);
+        } else if (userId) {
+          // Find user in allUsers list by ID
+          const user = allUsers.find(u => u.$id === userId);
+          if (user && user.name !== userData?.name) {
+            console.log('Adding user from allUsers:', user.name);
+            priorUserNames.add(user.name);
+          }
         }
       });
 
       const uniquePriorUserNames = Array.from(priorUserNames);
+      console.log('Final prior user names:', uniquePriorUserNames);
 
       if (uniquePriorUserNames.length > 0) {
         return (
@@ -234,6 +297,7 @@ const CustomerAssignmentScreen = () => {
     setIsDropdownOpen(false);
   };
 
+  
   return (
     <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
       <View>
@@ -256,27 +320,37 @@ const CustomerAssignmentScreen = () => {
             everyone.
           </Text>
         </View>
+        
 
         {/* Customer Info */}
         <View className="bg-color8 rounded-md px-5 py-7 mt-5 flex-row gap-5">
           {customer ? (
-            <TouchableOpacity>
-              <View
-                className="bg-color1 rounded-full flex items-center justify-center"
-                style={{ width: 64, height: 64 }}
-              >
-                <Text className="text-white font-bold" style={{ fontSize: 20 }}>
-                  {getInitials(customer.name)}
-                </Text>
-              </View>
-            </TouchableOpacity>
+            <View>
+              {customer.profileImage && customer.profileImage !== 'black' ? (
+                <Image
+                  source={{ uri: customer.profileImage }}
+                  style={{ width: 64, height: 64, borderRadius: 32 }}
+                />
+              ) : (
+                <View
+                  className="bg-color1 rounded-full flex items-center justify-center"
+                  style={{ width: 64, height: 64 }}
+                >
+                  <Text className="text-white font-bold" style={{ fontSize: 20 }}>
+                    {getInitials(customer.name)}
+                  </Text>
+                </View>
+              )}
+            </View>
           ) : (
-            <TouchableOpacity>
-              <Image
-                source={require("@/assets/images/profile.webp")}
-                style={{ width: 56, height: 56 }}
-              />
-            </TouchableOpacity>
+            <View
+              className="bg-color1 rounded-full flex items-center justify-center"
+              style={{ width: 64, height: 64 }}
+            >
+              <Text className="text-white font-bold" style={{ fontSize: 20 }}>
+                Cu
+              </Text>
+            </View>
           )}
           <View className="gap-1">
             <Text className="text-white text-[10px]">
@@ -308,11 +382,33 @@ const CustomerAssignmentScreen = () => {
             className="rounded-md bg-color3 px-5 py-3 mt-1 flex-row items-center justify-between"
             onPress={toggleDropdown}
           >
-            <Text
-              className={`text-sm ${selectedName ? "text-gray-600" : "text-gray-400"}`}
-            >
-              {selectedName || "Select a name"}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              {selectedName && (
+                <>
+                  {allUsers.find(u => u.name === selectedName)?.profileImage && 
+                   allUsers.find(u => u.name === selectedName)?.profileImage !== 'black' ? (
+                    <Image
+                      source={{ uri: allUsers.find(u => u.name === selectedName)?.profileImage }}
+                      style={{ width: 24, height: 24, borderRadius: 12 }}
+                    />
+                  ) : (
+                    <View
+                      className="bg-color1 rounded-full flex items-center justify-center"
+                      style={{ width: 24, height: 24 }}
+                    >
+                      <Text className="text-white text-[10px] font-bold">
+                        {getInitials(selectedName)}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+              <Text
+                className={`text-sm ${selectedName ? "text-gray-600" : "text-gray-400"}`}
+              >
+                {selectedName || "Select a name"}
+              </Text>
+            </View>
             <View
               className="transition-transform duration-300"
               style={{
@@ -339,13 +435,14 @@ const CustomerAssignmentScreen = () => {
           )}
         </View>
 
-        <ButtonComponent
-          label={isAssigning ? "Assigning..." : "Assign"}
-          onPress={handleAssign}
-          className="mt-10"
-          disabled={isAssigning}
-          loading={isAssigning}
-        />
+        <View className='mt-7'>
+          <ButtonComponent
+            label={isAssigning ? "Assigning..." : "Apply"}
+            onPress={handleAssign}
+            disabled={isAssigning || isLoading || !selectedName}
+            loading={isAssigning}
+          />
+        </View>
       </View>
     </View>
   );

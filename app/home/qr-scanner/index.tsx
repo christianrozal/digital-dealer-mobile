@@ -124,7 +124,9 @@ const QrScannerScreen = () => {
 
       // Dispatch the new scan ID to currentSlice
       dispatch(setCurrentScan(scanDocument.$id));
+      dispatch(setCurrentCustomer(customerId));
       console.log("Dispatched currentScan ID to store:", scanDocument.$id);
+      console.log("Dispatched currentCustomer ID to store:", customerId);
 
       router.push("/home/customers/customer-assignment");
     } catch (err) {

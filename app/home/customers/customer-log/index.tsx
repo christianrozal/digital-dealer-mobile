@@ -11,6 +11,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ButtonComponent from "@/components/button";
 import { setUserData } from "@/lib/store/userSlice";
+import { setCurrentCustomer } from "@/lib/store/currentSlice";
 import { databases, databaseId, commentsId, scansId, usersId } from "@/lib/appwrite";
 import { Query, ID } from "react-native-appwrite";
 import DotsIcon from "@/components/svg/dotsIcon";
@@ -32,7 +33,7 @@ interface Scan {
   $createdAt: string;
   users?: string;
   user?: User;
-  customers: Customer;
+  customers: CustomerData;
   interestStatus?: string;
   interestedIn?: string;
   followUpDate?: string;
@@ -53,13 +54,14 @@ interface CustomerData {
 }
 
 interface Customer {
-    id: string;
-    name?: string;
-    phone?: string;
-    email?: string;
-    profileImage?: string;
-    interestStatus?: string;
-    interestedIn?: string;
+  id: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  profileImage?: string;
+  interestStatus?: string;
+  interestedIn?: string;
+  scans?: Scan[];
 }
 
 interface UserData {
@@ -91,10 +93,36 @@ const CustomerLogScreen = () => {
     const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
     const currentScanId = useSelector((state: RootState) => state.current.currentScan);
     const userData = useSelector((state: RootState) => state.user.data);
+    const selectedCustomer = useSelector((state: RootState) => state.customer.selectedCustomer);
 
     // Find the current scan and customer data from userSlice
     const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
-    const customerData = currentScan?.customers;
+    
+    // Get customer data from either the scan or selectedCustomer
+    const customerData = selectedCustomer || currentScan?.customers;
+
+    // Log detailed data for debugging
+    useEffect(() => {
+        console.log('CustomerLogScreen - Detailed Data:', {
+            currentCustomerId,
+            currentScanId,
+            selectedCustomer: selectedCustomer ? {
+                id: selectedCustomer.id,
+                name: selectedCustomer.name
+            } : null,
+            currentScan: currentScan ? {
+                id: currentScan.$id,
+                customerId: currentScan.customers,
+                customerData: currentScan.customers
+            } : null,
+            finalCustomerData: customerData
+        });
+
+        // If we don't have currentCustomerId but we have customerData, update it
+        if (!currentCustomerId && customerData?.id) {
+            dispatch(setCurrentCustomer(String(customerData.id)));
+        }
+    }, [currentCustomerId, currentScanId, selectedCustomer, currentScan, customerData]);
 
     const [comments, setComments] = useState<Comment[]>([]);
     const [comment, setComment] = useState('');
@@ -237,6 +265,8 @@ const CustomerLogScreen = () => {
 
             setIsLoadingHistory(true);
             try {
+                console.log('Fetching assignment history for customer:', currentCustomerId);
+                
                 const response = await databases.listDocuments(
                     databaseId,
                     scansId,
@@ -246,21 +276,44 @@ const CustomerLogScreen = () => {
                     ]
                 );
 
-                const assignments = new Map<string, AssignmentHistory>();
-                
-                response.documents.forEach(scan => {
+                console.log('All scans for this customer:', response.documents.map(scan => ({
+                    scanId: scan.$id,
+                    createdAt: scan.$createdAt,
+                    userId: scan.users?.$id,
+                    userName: scan.users?.name,
+                })));
+
+                // Process assignments chronologically from oldest to newest
+                const assignments: AssignmentHistory[] = [];
+                let lastAssignedUserId: string | null = null;
+
+                // Reverse the array to process from oldest to newest
+                const orderedScans = [...response.documents].reverse();
+
+                for (let i = 0; i < orderedScans.length; i++) {
+                    const scan = orderedScans[i];
                     const userId = scan.users?.$id;
-                    if (userId && !assignments.has(userId)) {
-                        assignments.set(userId, {
+                    const prevScan = orderedScans[i - 1];
+                    const prevUserId = prevScan?.users?.$id;
+
+                    // Add to history if:
+                    // 1. This is the first scan (i === 0), or
+                    // 2. The user is different from the previous scan's user
+                    if (userId && (i === 0 || userId !== prevUserId)) {
+                        assignments.push({
                             date: scan.$createdAt,
                             userId: userId,
                             userName: scan.users?.name || 'Unknown User',
                             profileImage: scan.users?.profileImage
                         });
                     }
-                });
+                }
 
-                setAssignmentHistory(Array.from(assignments.values()));
+                // Sort by date in descending order (newest first)
+                assignments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                console.log('Final assignment history:', assignments);
+                setAssignmentHistory(assignments);
             } catch (error) {
                 console.error("Error fetching assignment history:", error);
             } finally {
@@ -608,6 +661,24 @@ const CustomerLogScreen = () => {
         const dt = dayjs(dateTimeStr);
         if (!dt.isValid()) return 'Select date and time';
         return `${dt.format('D MMM YYYY')} at ${dt.format('h:mm A')}`;
+    };
+
+    const renderPriorUsers = () => {
+        if (!customerData) return null;
+        
+        const scans = (customerData as CustomerData).scans;
+        if (!scans || scans.length === 0) return null;
+
+        const priorUserNames = new Set<string>();
+
+        scans.forEach((scan: Scan) => {
+            if (scan.user?.name && scan.user.name !== userData?.name) {
+                priorUserNames.add(scan.user.name);
+            }
+        });
+
+        const uniquePriorUserNames = Array.from(priorUserNames);
+        return uniquePriorUserNames;
     };
 
     return (
