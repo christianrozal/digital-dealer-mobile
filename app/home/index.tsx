@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Modal } from "react-native";
-import React, { useRef, useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Modal, RefreshControl } from "react-native";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import dayjs from "dayjs";
 import SearchIcon from "@/components/svg/searchIcon";
 import CloseIcon from "@/components/svg/closeIcon";
@@ -10,14 +10,31 @@ import CalendarIcon from "@/components/svg/calendar";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/lib/store/store";
 import { showActivitiesFilter, hideActivitiesFilter } from "@/lib/store/uiSlice";
-import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { router } from "expo-router";
 import { setCurrentScan, setCurrentCustomer } from '@/lib/store/currentSlice';
 import ActivitiesFilter from "@/components/activitiesFilter";
+import { databases, databaseId, usersId, account } from "@/lib/appwrite";
+import { Query } from "appwrite";
+import { setUserData } from "@/lib/store/userSlice";
+
+interface DealershipLevel2 {
+  $id: string;
+  name: string;
+  slug?: string;
+}
+
+interface DealershipLevel3 {
+  $id: string;
+  name: string;
+  slug?: string;
+  dealershipLevel2: DealershipLevel2;
+}
 
 interface Scan {
   $id: string;
   $createdAt: string;
+  dealershipLevel2?: { $id: string };
+  dealershipLevel3?: { $id: string };
   customers?: any;
   interestStatus?: string;
   interestedIn?: string;
@@ -27,6 +44,13 @@ interface Scan {
 
 interface UserData {
   $id: string;
+  name?: string;
+  dealershipLevel1?: {
+    $id: string;
+    name: string;
+  }[];
+  dealershipLevel2?: DealershipLevel2[];
+  dealershipLevel3?: DealershipLevel3[];
   scans?: Scan[];
 }
 
@@ -37,6 +61,8 @@ const HomeScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const userData = useSelector((state: RootState) => state.user.data) as UserData;
+  const currentDealershipLevel2Id = useSelector((state: RootState) => state.current.currentDealershipLevel2);
+  const currentDealershipLevel3Id = useSelector((state: RootState) => state.current.currentDealershipLevel3);
   const {
     isActivitiesFilterVisible,
     activitiesSelectedInterestedIns,
@@ -45,6 +71,7 @@ const HomeScreen = () => {
     activitiesFromDate,
     activitiesToDate,
   } = useSelector((state: RootState) => state.ui);
+  const [refreshing, setRefreshing] = useState(false);
 
   const scans = userData?.scans || [];
 
@@ -176,12 +203,64 @@ const HomeScreen = () => {
 
   const today = dayjs().format("dddd, D MMMM");
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const session = await account.get();
+      const response = await databases.listDocuments(
+        databaseId,
+        usersId,
+        [Query.equal('email', session.email)]
+      );
+
+      if (response.documents.length > 0) {
+        const freshUserData = response.documents[0] as UserData;
+        
+        if (currentDealershipLevel3Id) {
+          // If rooftop is selected, filter by rooftop
+          const filteredScans = freshUserData.scans?.filter((scan: Scan) => 
+            scan.dealershipLevel3?.$id === currentDealershipLevel3Id
+          ) || [];
+          dispatch(setUserData({ ...freshUserData, scans: filteredScans }));
+        } else if (currentDealershipLevel2Id) {
+          // If only dealership is selected, filter by dealership and its rooftops
+          const dealership = freshUserData.dealershipLevel2?.find((d: DealershipLevel2) => d.$id === currentDealershipLevel2Id);
+          if (dealership) {
+            const rooftops = freshUserData.dealershipLevel3?.filter(
+              (rooftop: DealershipLevel3) => rooftop.dealershipLevel2.$id === dealership.$id
+            ) || [];
+            const filteredScans = freshUserData.scans?.filter((scan: Scan) => 
+              scan.dealershipLevel2?.$id === currentDealershipLevel2Id ||
+              rooftops.some((rooftop: DealershipLevel3) => scan.dealershipLevel3?.$id === rooftop.$id)
+            ) || [];
+            dispatch(setUserData({ ...freshUserData, scans: filteredScans }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch, currentDealershipLevel2Id, currentDealershipLevel3Id]);
+
   return (
     <View style={{ flex: 1 }}>
       <ScrollView 
         className="flex-1 bg-white px-5 pt-20"
         ref={scrollViewRef}
         style={{marginBottom: 80}}
+        contentInset={{ top: 80 }}
+        contentOffset={{ x: 0, y: -80 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#3D12FA"]}
+            tintColor="#3D12FA"
+            progressViewOffset={40}
+          />
+        }
       >
         {/* Header Section */}
         <View className="flex-row justify-between items-center mt-5 min-h-10">

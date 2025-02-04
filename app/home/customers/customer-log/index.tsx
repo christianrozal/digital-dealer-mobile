@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Alert, ActivityIndicator, Modal } from "react-native";
 import { router } from "expo-router";
-import { Checkbox } from "react-native-paper";
+import Checkbox from "@/components/rnr/checkbox";
+import Radio from "@/components/rnr/radio";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/lib/store/store";
 import dayjs from "dayjs";
@@ -722,59 +723,54 @@ const CustomerLogScreen = () => {
                 {/* Interest in checkbox group*/}
                 <View className="mt-5">
                     <Text className="text-[10px] text-gray-500">Interested In</Text>
-                    <View className="flex-row -ml-2">
+                    <View className="flex-row gap-4 mt-2">
                         {/* Buying*/}
                         <TouchableOpacity
-                            className="flex-row items-center"
+                            className="flex-row items-center gap-2"
                             onPress={() => handleCheckboxChange("Buying")}
                         >
-                            <View className="scale-75">
-                                <Checkbox
-                                    status={interestedIn.includes("Buying") ? "checked" : "unchecked"}
-                                    color="#3D12FA"
-                                />
-                            </View>
-                            <Text className="text-[10px] -ml-1">Buying</Text>
+                            <Checkbox
+                                checked={interestedIn.includes("Buying")}
+                                onPress={() => handleCheckboxChange("Buying")}
+                                size={14}
+                            />
+                            <Text className="text-[10px]">Buying</Text>
                         </TouchableOpacity>
                         {/* Selling*/}
                         <TouchableOpacity
-                            className="flex-row items-center"
+                            className="flex-row items-center gap-2"
                             onPress={() => handleCheckboxChange("Selling")}
-
                         >
-                            <View className="scale-75">
-                                <Checkbox
-                                    status={interestedIn.includes("Selling") ? "checked" : "unchecked"}
-                                    color="#3D12FA"
-                                />
-                            </View>
-                            <Text className="text-[10px] -ml-1">Selling</Text>
+                            <Checkbox
+                                checked={interestedIn.includes("Selling")}
+                                onPress={() => handleCheckboxChange("Selling")}
+                                size={14}
+                            />
+                            <Text className="text-[10px]">Selling</Text>
                         </TouchableOpacity>
                         {/* Financing*/}
                         <TouchableOpacity
-                            className="flex-row items-center"
+                            className="flex-row items-center gap-2"
                             onPress={() => handleCheckboxChange("Financing")}
                         >
-                            <View className="scale-75">
-                                <Checkbox
-                                    status={interestedIn.includes("Financing") ? "checked" : "unchecked"}
-                                    color="#3D12FA"
-                                />
-                            </View>
-                            <Text className="text-[10px] -ml-1">Financing</Text>
+                            <Checkbox
+                                checked={interestedIn.includes("Financing")}
+                                onPress={() => handleCheckboxChange("Financing")}
+                                size={14}
+                            />
+                            <Text className="text-[10px]">Financing</Text>
                         </TouchableOpacity>
                         {/* Purchased*/}
                         <TouchableOpacity
-                            className="flex-row items-center"
+                            className="flex-row items-center gap-2"
                             onPress={() => handleCheckboxChange("Purchased")}
                         >
-                            <View className="scale-75">
-                                <Checkbox
-                                    status={interestedIn.includes("Purchased") ? "checked" : "unchecked"}
-                                    color="#3D12FA"
-                                />
-                            </View>
-                            <Text className="text-[10px] -ml-1">Purchased</Text>
+                            <Checkbox
+                                checked={interestedIn.includes("Purchased")}
+                                onPress={() => handleCheckboxChange("Purchased")}
+                                size={14}
+                            />
+                            <Text className="text-[10px]">Purchased</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -782,12 +778,72 @@ const CustomerLogScreen = () => {
                 {/* Interest status radio group*/}
                 <View className="mt-3">
                     <Text className="text-[10px] text-gray-500">Interest Status</Text>
-                    <View className="flex-row gap-3 mt-3">
-                        {customRadioButton("Hot", "Hot")}
-                        {customRadioButton("Warm", "Warm")}
-                        {customRadioButton("Cold", "Cold")}
-                        {customRadioButton("Not Interested", "Not Interested")}
-                        {customRadioButton("Bought", "Bought")}
+                    <View className="flex-row gap-4 mt-2">
+                        <TouchableOpacity
+                            className="flex-row items-center gap-1"
+                            onPress={() => handleInterestStatusChange("Hot")}
+                        >
+                            <Radio
+                                checked={value === "Hot"}
+                                onPress={() => handleInterestStatusChange("Hot")}
+                                size={12}
+                            />
+                            <Text className={`text-[10px] ${value === "Hot" ? "text-black" : "text-gray-500"}`}>
+                                Hot
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            className="flex-row items-center gap-1"
+                            onPress={() => handleInterestStatusChange("Warm")}
+                        >
+                            <Radio
+                                checked={value === "Warm"}
+                                onPress={() => handleInterestStatusChange("Warm")}
+                                size={12}
+                            />
+                            <Text className={`text-[10px] ${value === "Warm" ? "text-black" : "text-gray-500"}`}>
+                                Warm
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            className="flex-row items-center gap-1"
+                            onPress={() => handleInterestStatusChange("Cold")}
+                        >
+                            <Radio
+                                checked={value === "Cold"}
+                                onPress={() => handleInterestStatusChange("Cold")}
+                                size={12}
+                            />
+                            <Text className={`text-[10px] ${value === "Cold" ? "text-black" : "text-gray-500"}`}>
+                                Cold
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            className="flex-row items-center gap-1"
+                            onPress={() => handleInterestStatusChange("Not Interested")}
+                        >
+                            <Radio
+                                checked={value === "Not Interested"}
+                                onPress={() => handleInterestStatusChange("Not Interested")}
+                                size={12}
+                            />
+                            <Text className={`text-[10px] ${value === "Not Interested" ? "text-black" : "text-gray-500"}`}>
+                                Not Interested
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            className="flex-row items-center gap-1"
+                            onPress={() => handleInterestStatusChange("Bought")}
+                        >
+                            <Radio
+                                checked={value === "Bought"}
+                                onPress={() => handleInterestStatusChange("Bought")}
+                                size={12}
+                            />
+                            <Text className={`text-[10px] ${value === "Bought" ? "text-black" : "text-gray-500"}`}>
+                                Bought
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 

@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React, { FC, ReactNode } from "react";
 import { Text, TouchableOpacity, GestureResponderEvent, ActivityIndicator, View } from "react-native";
 
 interface ButtonComponentProps {
@@ -8,6 +8,7 @@ interface ButtonComponentProps {
   onPress?: (e: GestureResponderEvent) => void;
   disabled?: boolean;
   loading?: boolean;
+  icon?: ReactNode;
 }
 
 const ButtonComponent: FC<ButtonComponentProps> = ({
@@ -17,6 +18,7 @@ const ButtonComponent: FC<ButtonComponentProps> = ({
     onPress,
     disabled = false,
     loading = false,
+    icon,
 }) => {
     return (
         <TouchableOpacity
@@ -30,7 +32,7 @@ const ButtonComponent: FC<ButtonComponentProps> = ({
         >
             {loading ? (
               <View className="flex-row justify-center items-center gap-2">
-                  <ActivityIndicator color={var2 ? '#505155' : 'white'} />
+                  <ActivityIndicator color={var2 ? '#3D12FA' : 'white'} />
                   <Text
                       className={`${
                           var2 ? "text-color1" : "text-white"
@@ -40,13 +42,16 @@ const ButtonComponent: FC<ButtonComponentProps> = ({
                     </Text>
               </View>
             ) : (
-                <Text
-                    className={`${
-                        var2 ? "text-color1" : "text-white"
-                    } text-center font-semibold`}
-                >
-                  {label}
-                </Text>
+                <View className="flex-row justify-center items-center gap-2">
+                    {icon}
+                    <Text
+                        className={`${
+                            var2 ? "text-color1" : "text-white"
+                        } text-center font-semibold`}
+                    >
+                        {label}
+                    </Text>
+                </View>
             )}
         </TouchableOpacity>
     );

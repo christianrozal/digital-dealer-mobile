@@ -1,6 +1,5 @@
 import { View, Image, Text } from 'react-native';
 import React from 'react';
-import * as SplashScreen from 'expo-splash-screen';
 
 const CustomSplash = () => {
   return (

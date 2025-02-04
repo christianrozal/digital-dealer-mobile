@@ -4,13 +4,17 @@ import React, { useState, useEffect } from "react";
 import {
   Image,
   Text,
-  TextInput,
   View,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { Checkbox } from "react-native-paper";
+import Checkbox from "@/components/rnr/checkbox";
+import TextInput from "@/components/rnr/textInput";
 import { Client, Account } from "react-native-appwrite";
+import { setUserData } from '@/lib/store/userSlice';
+import { databases, databaseId, usersId } from '@/lib/appwrite';
+import { Query } from 'appwrite';
+import { useDispatch } from 'react-redux';
 
 // Initialize Appwrite client
 const client = new Client()
@@ -31,13 +35,14 @@ const LoginScreen = () => {
   const [checkboxError, setCheckboxError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
         const session = await account.getSession("current");
         if (session) {
-          router.replace("/dealerships");
+          router.replace("/home");
         }
       } catch (error) {
          console.log("No existing session:", (error as AppwriteError).message);
@@ -99,6 +104,17 @@ const LoginScreen = () => {
         return;
       }
 
+      // Fetch user data after successful login
+      const response = await databases.listDocuments(
+        databaseId,
+        usersId,
+        [Query.equal('email', email)]
+      );
+
+      if (response.documents.length > 0) {
+        dispatch(setUserData(response.documents[0]));
+      }
+
       // If we get here, user has an allowed role
       router.replace("/dealerships");
     } catch (error) {
@@ -115,6 +131,18 @@ const LoginScreen = () => {
             await account.deleteSession('current');
             return;
           }
+
+          // Fetch user data in case of session conflict
+          const response = await databases.listDocuments(
+            databaseId,
+            usersId,
+            [Query.equal('email', email)]
+          );
+
+          if (response.documents.length > 0) {
+            dispatch(setUserData(response.documents[0]));
+          }
+
           router.replace("/dealerships");
         } catch (innerError) {
           console.error("Verification Error:", innerError);
@@ -152,50 +180,38 @@ const LoginScreen = () => {
       </View>
 
       {/* Email Input */}
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        className={`placeholder:text-color2 border border-color4 rounded-md py-3 px-4 mt-4 w-full focus:outline-color1 ${
-          emailError ? "border-red-500" : ""
-        }`}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      {emailError && (
-        <Text className="text-red-500 text-[10px] mt-1 w-full text-left">
-          {emailError}
-        </Text>
-      )}
+      <View className="mt-4 w-full">
+        <TextInput
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          error={emailError}
+          keyboardType="email-address"
+
+          autoCapitalize="none"
+        />
+      </View>
 
       {/* Password Input */}
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        className={`placeholder:text-color2 border border-color4 rounded-md py-3 px-4 mt-4 w-full focus:outline-color1 ${
-          passwordError ? "border-red-500" : ""
-        }`}
-        secureTextEntry
-        autoCapitalize="none"
-      />
-      {passwordError && (
-        <Text className="text-red-500 text-[10px] mt-1 w-full text-left">
-          {passwordError}
-        </Text>
-      )}
+      <View className="mt-4 w-full">
+        <TextInput
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          error={passwordError}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+      </View>
 
       {/* Checkbox Section */}
-      <View className="flex-row items-center mt-2 w-full -translate-x-2">
-        <View className="scale-75">
-          <Checkbox
-            status={checked ? "checked" : "unchecked"}
-
-            onPress={() => setChecked(!checked)}
-            color="#3D12FA"
-          />
-        </View>
-        <Text className="text-[10px] font-medium text-color2">
+      <View className="flex-row items-center mt-5 w-full">
+        <Checkbox
+          checked={checked}
+          onPress={() => setChecked(!checked)}
+          size={14}
+        />
+        <Text className="text-[10px] font-medium text-color2 ml-2">
           I agree to Alexium's{" "}
           <Text 
             onPress={() => router.push("https://www.alexium.com.au/privacy-policy")} 

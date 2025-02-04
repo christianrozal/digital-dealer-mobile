@@ -1,11 +1,12 @@
 // store.ts
-import { configureStore, current } from '@reduxjs/toolkit';
+import { configureStore } from '@reduxjs/toolkit';
 import sidePaneReducer from './sidePaneSlice';
 import uiReducer from './uiSlice';
 import customerReducer from './customerSlice';
 import currentReducer from './currentSlice';
 import userReducer from './userSlice';
 import consultantReducer from './consultantSlice';
+
 const store = configureStore({
   reducer: {
     sidePane: sidePaneReducer,

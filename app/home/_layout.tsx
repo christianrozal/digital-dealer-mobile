@@ -6,7 +6,7 @@ import {
     Image
 } from "react-native";
 import React, { useEffect } from "react";
-import { router, Stack, usePathname, Slot } from "expo-router";
+import { router, usePathname, Slot } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/lib/store/store";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
@@ -102,10 +102,11 @@ const HomeLayout = () => {
 
     return (
         <GestureDetector gesture={openGesture}>
-            <View style={{ flex: 1 }}>
+            <View className="flex-1 bg-white">
             {shouldRenderLayout ? (
                 <>
                 <View
+
                     style={{
                         position: 'absolute',
                         top: 0,

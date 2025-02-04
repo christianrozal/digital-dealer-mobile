@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import AlexiumLogoIcon from "@/components/svg/alexiumLogo";
 import ChevronDownIcon from "@/components/svg/chevronDown";
 import ButtonComponent from "@/components/button";
+import Select from "@/components/rnr/select";
 import { router } from "expo-router";
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedRooftopData } from '@/lib/store/rooftopSlice';
@@ -57,55 +58,8 @@ const DealershipsScreen = () => {
   
   const dispatch = useDispatch();
   const userData = useSelector((state: RootState) => state.user.data) as UserData;
-  const loading = useSelector((state: RootState) => state.user.loading);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        dispatch(setLoading(true));
-        const session = await account.get();
-        const response = await databases.listDocuments(
-          databaseId,
-          usersId,
-          [Query.equal('email', session.email)]
-        );
-
-        if (response.documents.length > 0) {
-          // Map the raw data from Appwrite to our expected format
-          const rawUserData = response.documents[0];
-          console.log('Raw User Data from Appwrite:', {
-            dealershipLevel1: rawUserData.dealershipLevel1,
-            dealershipLevel2: rawUserData.dealershipLevel2,
-            dealershipLevel3: rawUserData.dealershipLevel3
-          });
-
-          const userData = {
-            ...rawUserData,
-            dealershipLevel1: rawUserData.dealershipLevel1 || [],
-            dealershipLevel2: rawUserData.dealershipLevel2 || [],
-            dealershipLevel3: rawUserData.dealershipLevel3 || []
-          } as unknown as UserData;
-          
-          console.log('Mapped User Data:', {
-            dealershipLevel1: userData.dealershipLevel1,
-            dealershipLevel2: userData.dealershipLevel2,
-            dealershipLevel3: userData.dealershipLevel3
-          });
-          
-          dispatch(setUserData(userData));
-        } else {
-          dispatch(setError('User not found'));
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        dispatch(setError(error instanceof Error ? error.message : 'Failed to fetch user data'));
-      } finally {
-        dispatch(setLoading(false));  // Make sure to set loading to false
-      }
-    };
-
-    fetchUserData();
-  }, [dispatch]);
+  const level1Name = userData?.dealershipLevel1?.[0]?.name || "No dealership assigned";
 
   const toggleDealershipDropdown = () => {
     setIsDealershipDropdownOpen(!isDealershipDropdownOpen);
@@ -243,123 +197,51 @@ const DealershipsScreen = () => {
     router.push("/home");
   };
 
-  const level1Name = loading 
-    ? "Loading..." 
-    : userData?.dealershipLevel1?.[0]?.name || "No dealership assigned";
-
   return (
-    <View className="items-center justify-center h-screen w-full max-w-60 mx-auto">
-      <AlexiumLogoIcon />
-      <Text className="mt-5 font-light text-sm">Welcome to</Text>
-      <Text className="text-xl font-semibold">{level1Name}</Text>
+    <View className="flex-1 bg-white">
+      <View className="items-center justify-center h-screen w-full max-w-60 mx-auto">
+        <AlexiumLogoIcon />
+        <Text className="mt-10 font-light text-sm">Welcome to</Text>
+        <Text className="text-xl font-semibold mt-3">{level1Name}</Text>
 
-      <View className="mt-10 relative z-20 w-full">
-        <TouchableOpacity
-          className="border rounded-md border-gray-300 px-5 py-3 flex-row items-center justify-between"
-          style={{ backgroundColor: "#FAFAFA" }}
-          onPress={toggleDealershipDropdown}
-        >
-          <Text
-            className={`text-sm ${selectedDealership ? "text-gray-600" : "text-gray-400"}`}
-          >
-            {selectedDealership?.name || "Select Dealership"}
-          </Text>
-          <View
-            className="transition-transform duration-300"
-            style={{
-              transform: [{ rotate: isDealershipDropdownOpen ? "180deg" : "0deg" }],
+        <View className="w-full" style={{ marginTop: 100, zIndex: 20 }}>
+          <Select
+            placeholder="Select Dealership"
+            value={selectedDealership ? { id: selectedDealership.$id, label: selectedDealership.name } : null}
+            options={userData?.dealershipLevel2?.map(d => ({ id: d.$id, label: d.name })) || []}
+            isOpen={isDealershipDropdownOpen}
+            onPress={toggleDealershipDropdown}
+            onSelect={(option) => {
+              const dealership = userData?.dealershipLevel2?.find(d => d.$id === option.id);
+              if (dealership) handleDealershipSelection(dealership);
             }}
-          >
-            <ChevronDownIcon width={16} height={16} />
-          </View>
-        </TouchableOpacity>
-        {isDealershipDropdownOpen && userData?.dealershipLevel2 && (
-          <ScrollView
-            className="mt-1 bg-white border border-gray-200 rounded-md"
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 20,
-              maxHeight: 112,
-            }}
-          >
-            {userData.dealershipLevel2.map((dealership) => (
-              <TouchableOpacity
-                key={dealership.$id}
-                className={`px-5 py-3 ${selectedDealership?.$id === dealership.$id ? "bg-color3" : "bg-white"}`}
-                onPress={() => handleDealershipSelection(dealership)}
-              >
-                <Text
-                  className={`text-sm ${selectedDealership?.$id === dealership.$id ? "text-color1" : "text-gray-700"}`}
-                >
-                  {dealership.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
-      </View>
-
-      {selectedDealership && availableRooftops.length > 0 && (
-        <View className="mt-5 relative z-10 w-full">
-          <TouchableOpacity
-            className="border rounded-md border-gray-300 px-5 py-3 flex-row items-center justify-between"
-            style={{ backgroundColor: "#FAFAFA" }}
-            onPress={toggleRooftopDropdown}
-          >
-            <Text
-              className={`text-sm ${selectedRooftop ? "text-gray-600" : "text-gray-400"}`}
-            >
-              {selectedRooftop?.name || "Select Rooftop"}
-            </Text>
-            <View
-              className="transition-transform duration-300"
-              style={{
-                transform: [{ rotate: isRooftopDropdownOpen ? "180deg" : "0deg" }],
-              }}
-            >
-              <ChevronDownIcon width={16} height={16} />
-            </View>
-          </TouchableOpacity>
-          {isRooftopDropdownOpen && (
-            <ScrollView
-              className="mt-1 bg-white border border-gray-200 rounded-md"
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                zIndex: 10,
-                maxHeight: 112,
-              }}
-            >
-              {availableRooftops.map((rooftop) => (
-                <TouchableOpacity
-                  key={rooftop.$id}
-                  className={`px-5 py-3 ${selectedRooftop?.$id === rooftop.$id ? "bg-color3" : "bg-white"}`}
-                  onPress={() => handleRooftopSelection(rooftop)}
-                >
-                  <Text
-                    className={`text-sm ${selectedRooftop?.$id === rooftop.$id ? "text-color1" : "text-gray-700"}`}
-                  >
-                    {rooftop.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+          />
         </View>
-      )}
 
-      <View className="mt-10 w-full">
-        <ButtonComponent
-          label="Continue"
-          onPress={handleContinue}
-          disabled={!selectedDealership || (availableRooftops.length > 0 && !selectedRooftop)}
-          var2
-        />
+        {selectedDealership && availableRooftops.length > 0 && (
+          <View className="mt-5 w-full" style={{ zIndex: 10 }}>
+            <Select
+              placeholder="Select Rooftop"
+              value={selectedRooftop ? { id: selectedRooftop.$id, label: selectedRooftop.name } : null}
+              options={availableRooftops.map(r => ({ id: r.$id, label: r.name }))}
+              isOpen={isRooftopDropdownOpen}
+              onPress={toggleRooftopDropdown}
+              onSelect={(option) => {
+                const rooftop = availableRooftops.find(r => r.$id === option.id);
+                if (rooftop) handleRooftopSelection(rooftop);
+              }}
+            />
+          </View>
+        )}
+
+        <View className="mt-10 w-full">
+          <ButtonComponent
+            label="Continue"
+            onPress={handleContinue}
+            disabled={!selectedDealership || (availableRooftops.length > 0 && !selectedRooftop)}
+            var2
+          />
+        </View>
       </View>
     </View>
   );
