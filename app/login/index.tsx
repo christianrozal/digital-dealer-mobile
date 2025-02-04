@@ -140,7 +140,7 @@ const LoginScreen = () => {
   }
 
   return (
-    <View className="bg-white items-center pt-12 px-8 flex-1">
+    <View className="bg-white items-center justify-center px-8 flex-1">
       {/* Logo Section */}
       <View className="items-center mb-8">
         <Image
@@ -190,19 +190,26 @@ const LoginScreen = () => {
         <View className="scale-75">
           <Checkbox
             status={checked ? "checked" : "unchecked"}
+
             onPress={() => setChecked(!checked)}
             color="#3D12FA"
           />
         </View>
         <Text className="text-[10px] font-medium text-color2">
           I agree to Alexium's{" "}
-          <TouchableOpacity onPress={() => router.push("/")}>
-            <Text className="underline">Privacy Policy</Text>
-          </TouchableOpacity>{" "}
-          and{" "}
-          <TouchableOpacity onPress={() => router.push("/")}>
-            <Text className="underline">Terms of Use</Text>
-          </TouchableOpacity>
+          <Text 
+            onPress={() => router.push("https://www.alexium.com.au/privacy-policy")} 
+            className="underline font-medium text-color2 text-[10px] active:opacity-50"
+          >
+            Privacy Policy
+          </Text>
+          {" "}and{" "}
+          <Text 
+            onPress={() => router.push("https://www.alexium.com.au/terms-of-use")} 
+            className="underline text-[10px] font-medium text-color2 active:opacity-50"
+          >
+            Terms of Use
+          </Text>
         </Text>
       </View>
       {checkboxError && (
