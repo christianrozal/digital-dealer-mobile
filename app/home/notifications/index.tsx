@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, Image, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, Image, ScrollView, Animated } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
 import { databases, databaseId, notificationsId } from "@/lib/appwrite";
 import { Query, Models } from "appwrite";
 import { useSelector } from "react-redux";
@@ -17,6 +17,74 @@ interface Notification extends Models.Document {
   read: boolean;
   customerName?: string;
 }
+
+const NotificationSkeleton = () => {
+  const fadeAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const renderSkeletonItem = () => (
+    <View className="p-3 bg-white mt-3 rounded-md flex-row gap-3 items-center">
+      <Animated.View 
+        className="w-9 h-9 bg-gray-200 rounded-full"
+        style={{ opacity: fadeAnim }}
+      />
+      <View className="flex-1 gap-2">
+        <Animated.View 
+          className="h-4 bg-gray-200 rounded w-full"
+          style={{ opacity: fadeAnim }}
+        />
+        <Animated.View 
+          className="h-3 bg-gray-200 rounded w-3/4"
+          style={{ opacity: fadeAnim }}
+        />
+      </View>
+    </View>
+  );
+
+  return (
+    <View>
+      <View>
+        <Animated.View 
+          className="h-6 bg-gray-200 rounded w-16 mb-2"
+          style={{ opacity: fadeAnim }}
+        />
+        {[1, 2, 3].map((_, index) => (
+          <React.Fragment key={index}>
+            {renderSkeletonItem()}
+          </React.Fragment>
+        ))}
+      </View>
+      
+      <View className="mt-6">
+        <Animated.View 
+          className="h-6 bg-gray-200 rounded w-16 mb-2"
+          style={{ opacity: fadeAnim }}
+        />
+        {[1, 2].map((_, index) => (
+          <React.Fragment key={index}>
+            {renderSkeletonItem()}
+          </React.Fragment>
+        ))}
+      </View>
+    </View>
+  );
+};
 
 const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -172,10 +240,11 @@ const NotificationsScreen = () => {
   );
 
   return (
-    <View className="flex-1 bg-white">
+    <ScrollView className="flex-1 bg-white">
       <View className="px-5 pt-20">
         <View className="flex-row justify-between items-center mt-5">
           <Text className="text-2xl font-semibold">Notifications</Text>
+
           <TouchableOpacity onPress={() => router.back()}>
             <Image
               source={require("@/assets/images/x.svg")}
@@ -193,10 +262,11 @@ const NotificationsScreen = () => {
 
         {loading ? (
           <View className="mt-5">
-            <Text>Loading notifications...</Text>
+            <NotificationSkeleton />
           </View>
         ) : (
-          <ScrollView className="mt-5" showsVerticalScrollIndicator={false}>
+
+          <View>
             {notifications.length > 0 ? (
               (() => {
                 const { today, older } = groupNotifications(notifications);
@@ -223,10 +293,11 @@ const NotificationsScreen = () => {
                 No notifications yet
               </Text>
             )}
-          </ScrollView>
+          </View>
         )}
       </View>
-    </View>
+    </ScrollView>
+
   );
 };
 

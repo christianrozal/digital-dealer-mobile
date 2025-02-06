@@ -218,34 +218,31 @@ const CustomerAssignmentScreen = () => {
       }
 
       try {
-        // Determine notification type and create notification
-        const notificationType = customer.scans?.length > 1 ? 'reassigned' : 'first_assigned';
-        const customerId = customer.id || customer.$id; // Try both possible ID fields
+        // Create notification only if this is a reassignment to a different consultant
+        const previousScan = customer.scans?.[1]; // Get the second most recent scan (if it exists)
+        const previousUserId = typeof previousScan?.users === 'string' ? previousScan.users : previousScan?.users?.$id;
         
-        if (!customerId) {
-          console.error("Could not find customer ID:", customer);
-          throw new Error("Customer ID is missing");
+        // Only create notification if there was a previous user and it's different from the current selection
+        if (previousUserId && previousUserId !== selectedUser.$id) {
+          console.log("Creating reassignment notification:", {
+            userId: selectedUser.$id,
+            customerId: customer.id || customer.$id
+          });
+
+          // Create notification for reassignment only
+          const notification = await databases.createDocument(
+            databaseId,
+            notificationsId,
+            ID.unique(),
+            {
+              type: 'reassigned',
+              read: false,
+              users: [selectedUser.$id],
+              customers: [customer.id || customer.$id]
+            }
+          );
+          console.log("Successfully created notification:", notification);
         }
-
-        console.log("Creating notification:", {
-          type: notificationType,
-          userId: selectedUser.$id,
-          customerId
-        });
-
-        // Create notification with proper relationship format
-        const notification = await databases.createDocument(
-          databaseId,
-          notificationsId,
-          ID.unique(),
-          {
-            type: notificationType,
-            read: false,
-            users: [selectedUser.$id],  // Keep as array since that's the correct format
-            customers: [customerId]     // Use the found customer ID
-          }
-        );
-        console.log("Successfully created notification:", notification);
       } catch (error) {
         console.error("Error creating notification:", error);
         throw error;
