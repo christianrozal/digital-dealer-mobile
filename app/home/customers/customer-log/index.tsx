@@ -450,21 +450,18 @@ const CustomerLogScreen = () => {
 
     // Function to generate initials in the desired format
     const generateInitials = (name: string | undefined) => {
-        if (!name) return "Us";
-
-        const nameParts = name.trim().split(" ");
-
+        if (!name) return "CU";
+        const nameParts = name.split(" ");
         const firstName = nameParts[0] || "";
-
-        if (firstName.length === 0) {
-            return "Us"
+        const lastName = nameParts[1] || "";
+        
+        if (!firstName) return "CU";
+        
+        if (lastName) {
+            return `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
         }
-
-        const firstInitial = firstName[0]?.toUpperCase() || "";
-        const secondInitial = firstName[1]?.toLowerCase() || "";
-
-
-        return `${firstInitial}${secondInitial}`
+        
+        return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
     };
 
     const renderProfileIcon = () => {
@@ -647,23 +644,6 @@ const CustomerLogScreen = () => {
         return `${dt.format('D MMM YYYY')} at ${dt.format('h:mm A')}`;
     };
 
-    const renderPriorUsers = () => {
-        if (!customerData) return null;
-        
-        const scans = (customerData as CustomerData).scans;
-        if (!scans || scans.length === 0) return null;
-
-        const priorUserNames = new Set<string>();
-
-        scans.forEach((scan: Scan) => {
-            if (scan.user?.name && scan.user.name !== userData?.name) {
-                priorUserNames.add(scan.user.name);
-            }
-        });
-
-        const uniquePriorUserNames = Array.from(priorUserNames);
-        return uniquePriorUserNames;
-    };
 
     return (
         <>
@@ -895,7 +875,7 @@ const CustomerLogScreen = () => {
                             className={`py-2 px-4 rounded-full ${activeTab === 'comments' ? 'bg-color3' : ''}`}
                             onPress={() => handleTabChange('comments')}
                         >
-                            <Text className={`text-black text-[10px] text-center font-semibold`}>
+                            <Text className={`text-[10px] text-center  ${activeTab === 'comments' ? 'text-black font-semibold' : 'text-gray-400 font-normal'}`}>
                                 Comments
                             </Text>
                         </TouchableOpacity>
@@ -903,15 +883,17 @@ const CustomerLogScreen = () => {
                             className={`py-2 px-4 rounded-full ${activeTab === 'thread' ? 'bg-color3' : ''}`}
                             onPress={() => handleTabChange('thread')}
                         >
-                            <Text className={`text-black text-[10px] text-center font-semibold`}>
+                            <Text className={`text-[10px] text-center  ${activeTab === 'thread' ? 'text-black font-semibold' : 'text-gray-400 font-normal'}`}>
                                 Thread
                             </Text>
                         </TouchableOpacity>
+
+
                         <TouchableOpacity 
                             className={`py-2 px-4 rounded-full ${activeTab === 'history' ? 'bg-color3' : ''}`}
                             onPress={() => handleTabChange('history')}
                         >
-                            <Text className={`text-black text-[10px] text-center font-semibold`}>
+                            <Text className={`text-[10px] text-center  ${activeTab === 'history' ? 'text-black font-semibold' : 'text-gray-400 font-normal'}`}>
                                 Assignment History
                             </Text>
                         </TouchableOpacity>

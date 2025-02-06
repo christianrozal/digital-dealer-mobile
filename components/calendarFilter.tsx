@@ -27,6 +27,28 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
     initialDate ? initialDate.startOf("month") : dayjs().startOf("month")
   );
   const [selectedDate, setSelectedDate] = useState(initialDate || dayjs());
+  const [error, setError] = useState<string | null>(null);
+
+  const isDateValid = (date: dayjs.Dayjs) => {
+    if (selectingFor === 'to' && fromDate) {
+      return date.isSameOrAfter(fromDate, 'day');
+    }
+    return true;
+  };
+
+  const handleDateSelect = (date: dayjs.Dayjs) => {
+    if (selectingFor === 'to' && fromDate && date.isBefore(fromDate, 'day')) {
+      setError('End date cannot be before start date');
+      return;
+    }
+    setError(null);
+    setSelectedDate(date);
+  };
+
+  const handleApply = () => {
+    if (error) return;
+    onClose(selectedDate);
+  };
 
   const generateCalendar = () => {
     const startOfMonth = currentMonth.startOf("month");
@@ -65,7 +87,12 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
       <View>
         {/* Close Header */}
         <View className="flex-row justify-between items-center">
-          <Text className="text-xl">Select Date</Text>
+          <View>
+            <Text className="text-xl">Select Date</Text>
+            {error && (
+              <Text className="text-red-500 text-xs mt-1">{error}</Text>
+            )}
+          </View>
           <TouchableOpacity onPress={() => onClose()}>
             <CloseIcon width={24} height={24} />
           </TouchableOpacity>
@@ -106,6 +133,7 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
                 const isSelected = selectedDate.isSame(dayDate, "day");
                 const isFromDate = fromDate?.isSame(dayDate, "day");
                 const isToDate = toDate?.isSame(dayDate, "day");
+                const isDisabled = !day.isCurrentMonth || (selectingFor === 'to' && fromDate && dayDate.isBefore(fromDate, 'day'));
                 
                 let isInRange = false;
                 if (selectingFor === 'from' && toDate) {
@@ -133,13 +161,13 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
                 return (
                   <TouchableOpacity
                     key={dayIndex}
-                    onPress={() => setSelectedDate(dayDate)}
+                    onPress={() => handleDateSelect(dayDate)}
                     className="h-10 flex-1 items-center justify-center"
                     style={[
                       bgStyles,
                       { borderRadius: 9999, paddingVertical: 5 }
                     ]}
-                    disabled={!day.isCurrentMonth}
+                    disabled={isDisabled}
                   >
                     <Text
                       className={`text-sm ${
@@ -147,6 +175,8 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
                           ? "text-white"
                           : isInRange && !isFromDate && !isToDate
                           ? "text-color1"
+                          : isDisabled
+                          ? "text-gray-300"
                           : day.isCurrentMonth
                           ? "text-gray-700"
                           : "text-gray-400"
@@ -166,7 +196,12 @@ const CalendarFilter = ({ onClose, initialDate, fromDate, toDate, selectingFor }
       {/* Calendar Footer */}
       <View className="flex-row gap-3 w-full">
         <ButtonComponent label="Back" onPress={() => onClose()} var2 className="flex-1" />
-        <ButtonComponent label="Apply" onPress={() => onClose(selectedDate)} className="flex-1" />
+        <ButtonComponent 
+          label="Apply" 
+          onPress={handleApply} 
+          className="flex-1"
+          disabled={!!error} 
+        />
       </View>
     </View>
   );

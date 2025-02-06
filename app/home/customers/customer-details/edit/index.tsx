@@ -180,13 +180,19 @@ const EditCustomerScreen = () => {
     }
   };
 
-  const getInitials = (name: string | undefined): string => {
-    if (!name) return "Us";
-    const firstName = name.trim().split(" ")[0] || "";
-    if (!firstName) return "Us"
-    const firstLetter = firstName[0]?.toUpperCase() || "";
-    const secondLetter = firstName[1]?.toLowerCase() || "";
-    return `${firstLetter}${secondLetter}`;
+  const getInitials = (name: string) => {
+    if (!name) return "CU";
+    const nameParts = name.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts[1] || "";
+    
+    if (!firstName) return "CU";
+    
+    if (lastName) {
+      return `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
+    }
+    
+    return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
   };
 
   const handleImageUpload = async () => {

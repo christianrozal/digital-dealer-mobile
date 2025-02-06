@@ -204,7 +204,7 @@ const DealershipsScreen = () => {
         <Text className="mt-10 font-light text-sm">Welcome to</Text>
         <Text className="text-xl font-semibold mt-3">{level1Name}</Text>
 
-        <View className="w-full" style={{ marginTop: 100, zIndex: 20 }}>
+        <View className="w-full" style={{ marginTop: 64, zIndex: 20 }}>
           <Select
             placeholder="Select Dealership"
             value={selectedDealership ? { id: selectedDealership.$id, label: selectedDealership.name } : null}
@@ -234,7 +234,7 @@ const DealershipsScreen = () => {
           </View>
         )}
 
-        <View className="mt-10 w-full">
+        <View className="mt-7 w-full">
           <ButtonComponent
             label="Continue"
             onPress={handleContinue}

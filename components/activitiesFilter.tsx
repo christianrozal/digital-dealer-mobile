@@ -20,6 +20,7 @@ import ButtonComponent from "./button";
 import ChevronDownIcon from "./svg/chevronDown";
 import CalendarFilter from "./calendarFilter";
 import Calendar2Icon from "./svg/calendar2";
+import Select from "@/components/rnr/select";
 import dayjs from "dayjs";
 
 type SortOption = "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest";
@@ -203,8 +204,8 @@ const ActivitiesFilter = () => {
           <View className="flex-1">
             <Text className="text-xs text-gray-600 font-medium">From</Text>
             <TouchableOpacity
-              className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-              style={{ backgroundColor: "#FAFAFA" }}
+              className="mt-3 border border-gray-200 rounded-md px-3 py-2 flex-row justify-between items-center"
+
               onPress={() => {
                 setSelectingFor("from");
                 setShowCalendar(true);
@@ -219,8 +220,7 @@ const ActivitiesFilter = () => {
           <View className="flex-1">
             <Text className="text-xs text-gray-600 font-medium">To</Text>
             <TouchableOpacity
-              className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-              style={{ backgroundColor: "#FAFAFA" }}
+              className="mt-3 border border-gray-200 rounded-md px-3 py-2 flex-row justify-between items-center"
               onPress={() => {
                 setSelectingFor("to");
                 setShowCalendar(true);
@@ -236,74 +236,22 @@ const ActivitiesFilter = () => {
 
         {/* Sort By Filter */}
         <View className="mt-4 relative z-10">
-          <Text className="text-xs text-gray-600 font-medium">Sort By</Text>
-          <TouchableOpacity
-            className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-            style={{ backgroundColor: "#FAFAFA" }}
+          <Text className="text-xs text-gray-600 font-medium mb-2">Sort By</Text>
+          <Select
+            placeholder="Select sort option"
+            value={activitiesSortBy ? { id: activitiesSortBy, label: SORT_OPTIONS.find((o) => o.value === activitiesSortBy)?.label || "" } : null}
+            options={SORT_OPTIONS.map(option => ({ id: option.value, label: option.label }))}
+            isOpen={isSortDropdownOpen}
             onPress={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-          >
-            <Text
-              className={`text-xs ${activitiesSortBy ? "text-gray-600" : "text-gray-400"}`}
-            >
-               {activitiesSortBy
-                ? SORT_OPTIONS.find((o) => o.value === activitiesSortBy)?.label
-                : "Select sort option"}
-            </Text>
-
-            <View
-              className="transition-transform duration-300"
-              style={{
-                transform: [{ rotate: isSortDropdownOpen ? "180deg" : "0deg" }],
-              }}
-            >
-              <ChevronDownIcon width={16} height={16} />
-            </View>
-          </TouchableOpacity>
-          {isSortDropdownOpen && (
-            <ScrollView
-              className="mt-1 bg-white border border-gray-200  rounded-md"
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                zIndex: 10,
-                height: 112,
-              }}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  className={`rounded-md p-3 flex-row items-center justify-between ${
-                    activitiesSortBy === option.value ? "bg-blue-50" : "bg-white"
-                  }`}
-                  onPress={() => {
-                    dispatch(setActivitiesSortBy(option.value));
-                    setIsSortDropdownOpen(false);
-                  }}
-                >
-                  <Text
-                    className={`text-xs ${
-                      activitiesSortBy === option.value ? "text-color1" : "text-gray-700"
-                    }`}
-                  >
-                    {option.label}
-                  </Text>
-                  {activitiesSortBy === option.value && (
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        dispatch(resetActivitiesSortBy());
-                        setIsSortDropdownOpen((prev) => !prev);
-                      }}
-                    >
-                      <CloseIcon width={16} height={16} />
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+            onSelect={(option) => {
+              if (option === null) {
+                dispatch(resetActivitiesSortBy());
+              } else {
+                dispatch(setActivitiesSortBy(option.id as SortOption));
+              }
+              setIsSortDropdownOpen(false);
+            }}
+          />
         </View>
 
         {/* Interested In Filter */}

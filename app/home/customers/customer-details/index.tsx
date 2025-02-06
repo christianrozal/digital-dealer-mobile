@@ -103,13 +103,18 @@ const SelectedCustomerScreen = () => {
   }
 
   const getInitials = (name: string) => {
-    if (!name) return "Cu";
-    const firstName = name.split(" ")[0];
-    const cleaned = firstName.replace(/[^a-zA-Z]/g, "");
-    return (cleaned.slice(0, 2) || "Cu")
-      .split("")
-      .map((c, i) => (i === 1 ? c.toLowerCase() : c.toUpperCase()))
-      .join("");
+    if (!name) return "CU";
+    const nameParts = name.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts[1] || "";
+    
+    if (!firstName) return "CU";
+    
+    if (lastName) {
+      return `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
+    }
+    
+    return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
   };
 
   const formatDate = (dateString: string) => {

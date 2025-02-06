@@ -79,6 +79,7 @@ const CustomersScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [totalCustomers, setTotalCustomers] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const hasActiveFilters =
@@ -242,13 +243,18 @@ const CustomersScreen = () => {
   };
 
   const getInitials = (name: string | undefined): string => {
-    if (!name) return "Cu";
-    const firstName = name.split(" ")[0];
-    const cleaned = firstName.replace(/[^a-zA-Z]/g, "");
-    return (cleaned.slice(0, 2) || "Cu")
-      .split("")
-      .map((c, i) => (i === 1 ? c.toLowerCase() : c.toUpperCase()))
-      .join("");
+    if (!name) return "CU";
+    const nameParts = name.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts[1] || "";
+    
+    if (!firstName) return "CU";
+    
+    if (lastName) {
+      return `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
+    }
+    
+    return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
   };
 
   const getFormattedDateRange = () => {
@@ -294,159 +300,76 @@ const CustomersScreen = () => {
         }}
       >
         {/* Header Section */}
-        <View className="flex-row justify-between items-center mt-5 min-h-10">
-          <Text className="text-2xl font-semibold">My Customers</Text>
-          <View className="flex-row gap-1 items-center">
-            {isSearching && (
-              <TextInput
-                ref={inputRef}
-                className="border border-color1 text-xs px-3 py-0 rounded-md w-32"
-                placeholder="Search customers..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoFocus={true}
-              />
-            )}
-            <TouchableOpacity
-              onPress={() => {
-                if (isSearching) setSearchQuery("");
-                setIsSearching(!isSearching);
-              }}
-            >
-              {isSearching ? (
-                <CloseIcon width={28} height={28} />
-              ) : (
-                <SearchIcon width={28} height={28} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => dispatch(showCustomersFilter())}
-              className="relative"
-            >
-              <FilterIcon showCircle={hasActiveFilters ? true : false} />
-            </TouchableOpacity>
-          </View>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-2xl font-semibold">My Customers <Text className="text-xl font-normal text-gray-500">({totalCustomers})</Text></Text>
+          <TouchableOpacity
+            onPress={() => dispatch(showCustomersFilter())}
+            className="relative"
+          >
+            <FilterIcon showCircle={hasActiveFilters ? true : false} />
+          </TouchableOpacity>
         </View>
 
-        {!hasActiveFilters && (
-          <View>
-            {/* Recent Customers Section */}
-            <View className="mt-5">
-              <View className="bg-color3 rounded-md p-3">
-                <Text className="text-xs font-bold">Recent</Text>
-              </View>
-              {recentCustomers.map((customer) => (
-                <TouchableOpacity
-                  key={customer.$id}
-                  className="p-3 mt-2 rounded-md flex-row justify-between items-center bg-white"
-                  onPress={() => {
-                    const customerForActivity = {
-                      ...customer,
-                      lastScanned: customer.lastScanned,
-                      scanCount: customer.scanCount,
-                      interestStatus: customer.interestStatus,
-                      interestedIn: customer.interestedIn
-                    };
-
-                    dispatch(setSelectedCustomer(customerForActivity));
-                    dispatch(setCurrentScan(customer.lastScanId || null));
-                    dispatch(setCurrentCustomer(customer.$id));
-                    
-                    router.push("/home/customers/customer-details");
-                  }}
-                >
-                  <View className="items-center flex-row gap-3">
-                    <View className="w-9 h-9 bg-color1 rounded-full items-center justify-center">
-                      {customer?.profileImage ? (
-                        <Image
-                          source={{ uri: customer.profileImage }}
-                          className="w-9 h-9 rounded-full"
-                        />
-                      ) : (
-                        <Text className="text-white font-bold text-xs">
-                          {getInitials(customer.name)}
-                        </Text>
-                      )}
-                    </View>
-                    <View>
-                      <Text className="font-bold text-sm">{customer.name}</Text>
-                      <View className="flex-row gap-1 items-center mt-1">
-                        <PhoneIcon width={14} height={14} />
-                        <Text className="text-gray-500 text-xs">
-                          {customer.phone || "No phone number"}
-                        </Text>
-                      </View>
-                      <Text className="text-[10px] font-semibold text-gray-400">
-                        Last scanned:{" "}
-                        <Text className="font-normal">
-                          {formatDate(customer.lastScanned)}
-                        </Text>
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="gap-2">
-                    <Text className="text-[10px] text-gray-500">
-                      #scans: {customer.scanCount}
-                    </Text>
-                    <View className="flex-row gap-2">
-                      <Text
-                        className={`rounded-full text-[10px] border font-semibold px-2 py-0.5 ${
-                          customer.interestStatus === "Hot"
-                            ? "border-red-400 bg-red-100 text-red-600"
-                            : customer.interestStatus === "Warm"
-                              ? "border-orange-400 bg-orange-100 text-orange-600"
-                              : "border-gray-400 bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {customer.interestStatus}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+        {/* Search Section */}
+        <View className={`mt-4 flex-row items-center rounded-md border ${isFocused ? 'border-color1' : 'border-gray-200'}`}>
+          <View className="px-3">
+            <SearchIcon width={24} height={24} stroke={isFocused ? "#3D12FA" : "black"} />
           </View>
-        )}
+          <TextInput
+            ref={inputRef}
+            className="flex-1 py-2 text-sm"
+            placeholder="Search customers..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
+          {searchQuery ? (
+            <TouchableOpacity className="px-3" onPress={() => setSearchQuery("")}>
+              <CloseIcon width={20} height={20} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
-        {/* Contacts Section */}
-        <View className="mt-5">
-          <View className="bg-color3 rounded-md p-3 flex-row justify-between">
-            <Text className="text-xs font-bold">
-              Contacts <Text className="font-normal">{getFormattedDateRange()}</Text>
-            </Text>
-            <Text className="text-xs font-bold">
-              <Text className="font-normal">Total:</Text> {totalCustomers}
+        {/* Customers List */}
+        {flatCustomers.length === 0 ? (
+          <View className="items-center justify-center mt-5">
+            <Text className="text-gray-500 text-base">
+              No customers found
             </Text>
           </View>
 
-          {/* Render sorted or grouped customers */}
-          {customersSortBy ? (
-            flatCustomers.map((customer) => (
-              <CustomerCard 
-                key={customer.$id} 
-                customer={customer} 
-                getInitials={getInitials}
-                formatDate={formatDate}
-              />
-            ))
-          ) : (
-            Object.keys(groupedCustomers).map((letter) => (
-              <View key={letter}>
-                <View className="px-3 mt-3">
-                  <Text className="font-bold text-lg">{letter}</Text>
+        ) : (
+          <>
+            {/* Render sorted or grouped customers */
+            customersSortBy ? (
+              flatCustomers.map((customer) => (
+                <CustomerCard 
+                  key={customer.$id} 
+                  customer={customer} 
+                  getInitials={getInitials}
+                  formatDate={formatDate}
+                />
+              ))
+            ) : (
+              Object.keys(groupedCustomers).map((letter) => (
+                <View key={letter}>
+                  <View className="px-3 mt-3">
+                    <Text className="font-bold text-lg">{letter}</Text>
+                  </View>
+                  {groupedCustomers[letter].map((customer) => (
+                    <CustomerCard 
+                      key={customer.$id} 
+                      customer={customer} 
+                      getInitials={getInitials}
+                      formatDate={formatDate}
+                    />
+                  ))}
                 </View>
-                {groupedCustomers[letter].map((customer) => (
-                  <CustomerCard 
-                    key={customer.$id} 
-                    customer={customer} 
-                    getInitials={getInitials}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </View>
-            ))
-          )}
-        </View>
+              ))
+            )}
+          </>
+        )}
 
         {/* Filter Modal */}
         <Modal

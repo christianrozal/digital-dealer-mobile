@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, Modal } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Modal, useWindowDimensions } from "react-native";
 import React, { useMemo, useState } from "react";
 import FilterIcon from "@/components/svg/filterIcon";
 import { LineChart, PieChart } from "react-native-gifted-charts";
@@ -8,8 +8,6 @@ import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import CalendarFilter from "@/components/calendarFilter";
-import Calendar2Icon from "@/components/svg/calendar2";
 import AnalyticsFilter from "@/components/analyticsFilter";
 import { showAnalyticsFilter, hideAnalyticsFilter } from "@/lib/store/uiSlice";
 
@@ -35,6 +33,7 @@ interface CustomerStats {
 
 const AnalyticsScreen = () => {
   const dispatch = useDispatch();
+  const { width: windowWidth } = useWindowDimensions();
   const userData = useSelector((state: RootState) => state.user.data);
   const { analyticsFromDate, analyticsToDate, isAnalyticsFilterVisible } = useSelector((state: RootState) => state.ui);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -185,7 +184,45 @@ const AnalyticsScreen = () => {
     
     // Calculate number of days between dates
     const daysDiff = dayjs(toDate).diff(dayjs(fromDate), 'day') + 1;
-    
+
+    // If the range is 30 days or more, aggregate by weeks
+    if (daysDiff >= 30) {
+      const weekData = new Map();
+      
+      // Initialize all weeks in the range
+      let currentDate = dayjs(fromDate);
+      while (currentDate.isSameOrBefore(dayjs(toDate), 'day')) {
+        const weekStart = currentDate.startOf('week');
+        const weekKey = weekStart.format('YYYY-MM-DD');
+        if (!weekData.has(weekKey)) {
+          weekData.set(weekKey, {
+            start: weekStart,
+            count: 0
+          });
+        }
+        currentDate = currentDate.add(1, 'day');
+      }
+
+      // Aggregate scan counts by week
+      Object.entries(stats.dailyScans).forEach(([date, count]) => {
+        const scanDate = dayjs(date);
+        if (scanDate.isBetween(fromDate, toDate, 'day', '[]')) {
+          const weekKey = scanDate.startOf('week').format('YYYY-MM-DD');
+          if (weekData.has(weekKey)) {
+            weekData.get(weekKey).count += count;
+          }
+        }
+      });
+
+      // Convert to line chart data format
+      return Array.from(weekData.values()).map(week => ({
+        value: week.count,
+        label: `${week.start.format('D MMM')}`,
+        dataPointText: week.count.toString()
+      }));
+    }
+
+    // For shorter ranges, show daily data as before
     const dates = Array.from({ length: daysDiff }, (_, i) => {
       return dayjs(fromDate).add(i, 'day').format('YYYY-MM-DD');
     });
@@ -227,13 +264,14 @@ const AnalyticsScreen = () => {
             <FilterIcon showCircle={!!(analyticsFromDate || analyticsToDate)} />
           </TouchableOpacity>
         </View>
-        <View className="mt-10">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-gray-600 font-bold text-sm">#Daily Scans</Text>
-            <Text className="text-xs text-gray-500">{getDateRangeText}</Text>
+        <Text className="text-xs text-gray-500 text-right mt-5">Date: {getDateRangeText}</Text>
+        <View className="mt-5">
+          <View className="">
+          <Text className="font-semibold bg-color3 p-3 rounded-md w-full text-center">Scans</Text>
+            
           </View>
         </View>
-        <View className="mt-5 -mx-5">
+        <View className="mt-5">
           {hasData ? (
             <LineChart
               data={lineData}
@@ -244,9 +282,10 @@ const AnalyticsScreen = () => {
               textFontSize={10}
               noOfSections={3}
               maxValue={Math.max(...lineData.map(d => d.value)) + 5}
-              spacing={45}
-              width={400}
+              width={windowWidth - 40}
               height={150}
+              adjustToWidth={true}
+              spacing={(windowWidth - 80) / lineData.length}
               rulesType="solid"
               rulesColor='#E5E7EB'
               xAxisColor={'#E5E7EB'}
@@ -258,6 +297,8 @@ const AnalyticsScreen = () => {
               }}
               initialSpacing={20}
               endSpacing={20}
+              xAxisLabelsVerticalShift={3}
+              focusEnabled
             />
           ) : (
             <View className="h-[150px] items-center justify-center">
@@ -267,8 +308,8 @@ const AnalyticsScreen = () => {
         </View>
 
         {/* Lead Status Distribution */}
-        <View className="mt-10 items-center">
-          <Text className="font-semibold">Lead Status Distribution</Text>
+        <View className="mt-16 items-center">
+          <Text className="font-semibold bg-color3 p-3 rounded-md w-full text-center">Lead Status Distribution</Text>
           <View className="mt-10 flex-row items-center gap-10">
             <PieChart 
               data={interestedInData} 
@@ -277,7 +318,7 @@ const AnalyticsScreen = () => {
               innerRadius={57} 
               centerLabelComponent={() => {
                 return <View>
-                  <Text className="font-bold text-2xl text-color1">{totalCustomers}</Text>
+                  <Text className="font-bold text-center text-2xl text-color1">{totalCustomers}</Text>
                   <Text className="font-medium text-gray-500 text-sm text-center">Total</Text>
                 </View>;
               }}
@@ -297,16 +338,17 @@ const AnalyticsScreen = () => {
 
         {/* Customer Interest Distribution */}
         <View className="mt-16 mb-64 items-center">
-          <Text className="font-semibold">Customer Interest Distribution</Text>
+          <Text className="font-semibold bg-color3 p-3 rounded-md w-full text-center">Customer Interest Distribution</Text>
           <View className="mt-10 flex-row items-center gap-10">
             <PieChart 
               data={interestStatusData} 
+
               donut  
               radius={70}  
               innerRadius={57} 
               centerLabelComponent={() => {
                 return <View>
-                  <Text className="font-bold text-2xl text-color1">{totalByStatus}</Text>
+                  <Text className="font-bold text-2xl text-color1 text-center">{totalByStatus}</Text>
                   <Text className="font-medium text-gray-500 text-sm text-center">Total</Text>
                 </View>;
               }}

@@ -37,6 +37,21 @@ export default function RootLayout() {
     checkSessionAndHideSplash();
   }, []);
 
+  const getInitials = (name: string | undefined): string => {
+    if (!name) return "CU";
+    const nameParts = name.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts[1] || "";
+    
+    if (!firstName) return "CU";
+    
+    if (lastName) {
+      return `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
+    }
+    
+    return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
+  };
+
   if (isLoading) {
     return <CustomSplash />;
   }

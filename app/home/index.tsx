@@ -72,6 +72,7 @@ const HomeScreen = () => {
     activitiesToDate,
   } = useSelector((state: RootState) => state.ui);
   const [refreshing, setRefreshing] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   const scans = userData?.scans || [];
 
@@ -192,13 +193,18 @@ const HomeScreen = () => {
   };
 
   const getInitials = (name: string): string => {
-    if (!name) return "Cu";
-    const firstName = name.split(" ")[0];
-    const cleaned = firstName.replace(/[^a-zA-Z]/g, "");
-    return (cleaned.slice(0, 2) || "Cu")
-      .split("")
-      .map((c, i) => (i === 1 ? c.toLowerCase() : c.toUpperCase()))
-      .join("");
+    if (!name) return "CU";
+    const nameParts = name.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts[1] || "";
+    
+    if (!firstName) return "CU";
+    
+    if (lastName) {
+      return `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
+    }
+    
+    return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
   };
 
   const today = dayjs().format("dddd, D MMMM");
@@ -244,10 +250,28 @@ const HomeScreen = () => {
     }
   }, [dispatch, currentDealershipLevel2Id, currentDealershipLevel3Id]);
 
+  const getFormattedDateRange = () => {
+    if (activitiesFromDate && dayjs(activitiesFromDate).isValid() && activitiesToDate && dayjs(activitiesToDate).isValid()) {
+      return `${dayjs(activitiesFromDate).format("DD MMM")} - ${dayjs(activitiesToDate).format("DD MMM YYYY")}`;
+    } else if (activitiesFromDate && dayjs(activitiesFromDate).isValid()) {
+      return dayjs(activitiesFromDate).format("DD MMM");
+    } else if (activitiesToDate && dayjs(activitiesToDate).isValid()) {
+      return dayjs(activitiesToDate).format("DD MMM YYYY");
+    } else {
+      return new Date().toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    }
+  };
+
+  const totalActivities = filteredScans.length;
+
   return (
     <View style={{ flex: 1 }}>
       <ScrollView 
-        className="flex-1 bg-white px-5 pt-20"
+        className="flex-1 bg-white px-5 pt-16"
         ref={scrollViewRef}
         style={{marginBottom: 80}}
         contentInset={{ top: 80 }}
@@ -265,31 +289,7 @@ const HomeScreen = () => {
         {/* Header Section */}
         <View className="flex-row justify-between items-center mt-5 min-h-10">
           <Text className="text-2xl font-semibold">Activities</Text>
-
           <View className="flex-row gap-1 items-center">
-            {isSearching && (
-              <TextInput
-                ref={inputRef}
-                className="focus:outline-color1 border border-color1 text-xs px-3 py-2 rounded-md"
-                style={{ width: 128 }}
-                placeholder="Search customers..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoFocus={true}
-              />
-            )}
-            <TouchableOpacity
-              onPress={() => {
-                if (isSearching) setSearchQuery("");
-                setIsSearching(!isSearching);
-              }}
-            >
-              {isSearching ? (
-                <CloseIcon width={28} height={28} />
-              ) : (
-                <SearchIcon width={28} height={28} />
-              )}
-            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => dispatch(showActivitiesFilter())}
               className="relative"
@@ -299,43 +299,44 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        <View className="mt-3">
-          <Text className="text-xs text-gray-500">
-            Below shows the list of scans done today.
-          </Text>
+        {/* Search Section */}
+        <View className={`mt-4 flex-row items-center rounded-md border ${isFocused ? 'border-color1' : 'border-gray-200'}`}>
+          <View className="px-3">
+            <SearchIcon width={24} height={24} stroke={isFocused ? "#3D12FA" : "black"} />
+          </View>
+          <TextInput
+            ref={inputRef}
+            className="flex-1 py-2 text-sm"
+            placeholder="Search scans..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
+          {searchQuery ? (
+            <TouchableOpacity className="px-3" onPress={() => setSearchQuery("")}>
+              <CloseIcon width={20} height={20} />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Today's Summary */}
         <View className="flex-row justify-between rounded-md bg-color3 p-3 mt-5">
           <Text className="text-xs font-bold">
             {(activitiesFromDate && dayjs(activitiesFromDate).isValid()) || (activitiesToDate && dayjs(activitiesToDate).isValid()) ? "Date Range" : "Today"}{" "}
-            <Text className="text-[10px] font-normal">
-              {(activitiesFromDate && dayjs(activitiesFromDate).isValid()) || (activitiesToDate && dayjs(activitiesToDate).isValid()) ? (
-                <Text>
-                  ({activitiesFromDate && dayjs(activitiesFromDate).isValid() ? dayjs(activitiesFromDate).format("DD MMM") : ""}
-                  {activitiesToDate && dayjs(activitiesToDate).isValid() ? ` - ${dayjs(activitiesToDate).format("DD MMM YYYY")}` : ""})
-                </Text>
-              ) : (
-                `(${new Date().toLocaleDateString("en-US", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })})`
-              )}
-            </Text>
+            <Text className="font-normal">{getFormattedDateRange()}</Text>
           </Text>
-          <Text className="text-[10px]">
-            #scans:{" "}
-            <Text className="text-xs font-bold">
-              {filteredScans?.length || 0}
-            </Text>
+          <Text className="text-xs font-bold">
+            <Text className="font-normal">Total:</Text> {totalActivities}
           </Text>
         </View>
+
+        
 
         {/* Empty State */}
         {filteredScans.length === 0 ? (
           <View className="mt-5 items-center">
-            <Text className="text-gray-500">No scans found for today</Text>
+            <Text className="text-gray-500">No scans found</Text>
           </View>
         ) : (
           <View className="gap-4 mt-5">

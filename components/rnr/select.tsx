@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList } from 'react-native';
 import ChevronDownIcon from '@/components/svg/chevronDown';
 
 interface Option {
@@ -30,6 +30,18 @@ const Select: React.FC<Props> = ({
   error,
   maxHeight = 112
 }) => {
+  const renderItem = ({ item: option }: { item: Option }) => (
+    <TouchableOpacity
+      key={option.id}
+      className={`px-5 py-2 ${value?.id === option.id ? "bg-color3" : "bg-white"}`}
+      onPress={() => onSelect(option)}
+    >
+      <Text className={`text-sm ${value?.id === option.id ? "text-black" : "text-gray-700"}`}>
+        {option.label}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View className="w-full">
       {label && (
@@ -38,7 +50,7 @@ const Select: React.FC<Props> = ({
       
       <View className="relative z-20">
         <TouchableOpacity
-          className={`border rounded-md px-5 py-3 flex-row items-center justify-between bg-[#FAFAFA] ${error ? "border-red-500" : ""} ${isOpen ? "border-color1" : "border-gray-200"}`}
+          className={`border rounded-md px-5 py-2 flex-row items-center justify-between bg-[#FAFAFA] ${error ? "border-red-500" : ""} ${isOpen ? "border-color1" : "border-gray-200"}`}
           onPress={onPress}
         >
           <Text className={`text-sm ${value ? "text-black" : "text-gray-400"}`}>
@@ -55,25 +67,30 @@ const Select: React.FC<Props> = ({
         </TouchableOpacity>
 
         {isOpen && options.length > 0 && (
-          <ScrollView
+          <View 
             className="mt-1 bg-white border border-gray-200 rounded-md absolute w-full"
             style={{
               top: "100%",
-              maxHeight
+              maxHeight,
+              elevation: 5,
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              zIndex: 1000
             }}
           >
-            {options.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                className={`px-5 py-3 ${value?.id === option.id ? "bg-color3" : "bg-white"}`}
-                onPress={() => onSelect(option)}
-              >
-                <Text className={`text-sm ${value?.id === option.id ? "text-black" : "text-gray-700"}`}>
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+            <FlatList
+              data={options}
+              renderItem={renderItem}
+              keyExtractor={(item) => item.id}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+            />
+          </View>
         )}
       </View>
 

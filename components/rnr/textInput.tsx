@@ -14,7 +14,7 @@ const TextInput: React.FC<Props> = ({ error, label, ...props }) => {
       )}
 
       <RNTextInput
-        className={`placeholder:text-color2 border border-color4 rounded-md  px-4 w-full focus:outline-color1 ${
+        className={`placeholder:text-color2 py-3 border border-color4 rounded-md  px-4 w-full focus:outline-color1 ${
           error ? "border-red-500" : ""
         }`}
         placeholderTextColor="#6B6B6B"

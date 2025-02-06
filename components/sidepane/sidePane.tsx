@@ -158,15 +158,20 @@ const SidePaneComponent = ({
         router.push("/home/profile");
     };
 
-    const formatInitials = (name: string | undefined): string => {
+    // Function to generate initials in the desired format
+    const generateInitials = (name: string | undefined) => {
         if (!name) return "CU";
-        const firstName = name.trim().split(" ")[0] || "";
+        const nameParts = name.trim().split(" ");
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts[1] || "";
+        
         if (!firstName) return "CU";
-
-        const firstLetter = firstName[0]?.toUpperCase() || "";
-        const secondLetter = firstName[1]?.toLowerCase() || "";
-
-        return `${firstLetter}${secondLetter}`;
+        
+        if (lastName) {
+            return `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`;
+        }
+        
+        return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
     };
 
     const handleDealershipSelection = (dealership: DealershipLevel2) => {
@@ -361,7 +366,7 @@ const SidePaneComponent = ({
                                             />
                                         ) : (
                                             <Text className="text-white font-bold text-sm">
-                                                {formatInitials(userData?.name)}
+                                                {generateInitials(userData?.name)}
                                             </Text>
                                         )}
                                     </View>
@@ -423,7 +428,7 @@ const SidePaneComponent = ({
                                 )}
 
                                 {/* QR Code */}
-                                <View className="mt-10">
+                                <View className="mt-7">
                                     <View className="bg-color3 rounded-md" style={{ padding: 20 }}>
                                         {qrData ? (
                                             <View>

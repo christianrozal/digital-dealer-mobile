@@ -20,6 +20,7 @@ import ButtonComponent from "./button";
 import ChevronDownIcon from "./svg/chevronDown";
 import CalendarFilter from "./calendarFilter";
 import Calendar2Icon from "./svg/calendar2";
+import Select from "@/components/rnr/select";
 import dayjs from "dayjs";
 
 type SortOption = "a_to_z" | "z_to_a" | "scans_low_to_high" | "scans_high_to_low" | "last_scanned_newest_to_oldest" | "last_scanned_oldest_to_newest";
@@ -78,12 +79,12 @@ const CustomersFilter = () => {
   ];
 
   const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+    { value: "last_scanned_newest_to_oldest", label: "Latest scans first" },
+    { value: "last_scanned_oldest_to_newest", label: "Oldest scans first" },
     { value: "a_to_z", label: "A to Z" },
     { value: "z_to_a", label: "Z to A" },
     { value: "scans_low_to_high", label: "Number of scans (lowest to highest)" },
-    { value: "scans_high_to_low", label: "Number of scans (highest to lowest)" },
-    { value: "last_scanned_newest_to_oldest", label: "Last scanned date (newest to oldest)" },
-    { value: "last_scanned_oldest_to_newest", label: "Last scanned date (oldest to newest)" },
+    { value: "scans_high_to_low", label: "Number of scans (highest to lowest)" }
   ];
 
   const getInterestOptionStyle = (value: string) => {
@@ -200,8 +201,7 @@ const CustomersFilter = () => {
           <View className="flex-1">
             <Text className="text-xs text-gray-600 font-medium">From</Text>
             <TouchableOpacity
-              className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-              style={{ backgroundColor: "#FAFAFA" }}
+              className="mt-3 border border-gray-200 rounded-md px-3 py-2 flex-row justify-between items-center"
               onPress={() => {
                 setSelectingFor("from");
                 setShowCalendar(true);
@@ -216,8 +216,7 @@ const CustomersFilter = () => {
           <View className="flex-1">
             <Text className="text-xs text-gray-600 font-medium">To</Text>
             <TouchableOpacity
-              className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-              style={{ backgroundColor: "#FAFAFA" }}
+              className="mt-3 border border-gray-200 rounded-md px-3 py-2 flex-row justify-between items-center"
               onPress={() => {
                 setSelectingFor("to");
                 setShowCalendar(true);
@@ -233,74 +232,23 @@ const CustomersFilter = () => {
 
         {/* Sort By Filter */}
         <View className="mt-4 relative z-10">
-          <Text className="text-xs text-gray-600 font-medium">Sort By</Text>
-          <TouchableOpacity
-            className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-            style={{ backgroundColor: "#FAFAFA" }}
-            onPress={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-          >
-            <Text
-              className={`text-xs ${customersSortBy ? "text-gray-600" : "text-gray-400"}`}
-            >
-               {customersSortBy
-                ? SORT_OPTIONS.find((o) => o.value === customersSortBy)?.label
-                : "Select sort option"}
-            </Text>
+          <Text className="text-xs text-gray-600 font-medium mb-2">Sort By</Text>
+          <Select
+            placeholder="Select sort option"
 
-            <View
-              className="transition-transform duration-300"
-              style={{
-                transform: [{ rotate: isSortDropdownOpen ? "180deg" : "0deg" }],
-              }}
-            >
-              <ChevronDownIcon width={16} height={16} />
-            </View>
-          </TouchableOpacity>
-          {isSortDropdownOpen && (
-            <ScrollView
-              className="mt-1 bg-white border border-gray-200  rounded-md"
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                zIndex: 10,
-                height: 112,
-              }}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  className={`rounded-md p-3 flex-row items-center justify-between ${
-                    customersSortBy === option.value ? "bg-blue-50" : "bg-white"
-                  }`}
-                  onPress={() => {
-                    dispatch(setCustomersSortBy(option.value));
-                    setIsSortDropdownOpen(false);
-                  }}
-                >
-                  <Text
-                    className={`text-xs ${
-                      customersSortBy === option.value ? "text-color1" : "text-gray-700"
-                    }`}
-                  >
-                    {option.label}
-                  </Text>
-                  {customersSortBy === option.value && (
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        dispatch(resetCustomersSortBy());
-                        setIsSortDropdownOpen((prev) => !prev);
-                      }}
-                    >
-                      <CloseIcon width={16} height={16} />
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+            value={customersSortBy ? { id: customersSortBy, label: SORT_OPTIONS.find((o) => o.value === customersSortBy)?.label || "" } : null}
+            options={SORT_OPTIONS.map(option => ({ id: option.value, label: option.label }))}
+            isOpen={isSortDropdownOpen}
+            onPress={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+            onSelect={(option) => {
+              if (option === null) {
+                dispatch(resetCustomersSortBy());
+              } else {
+                dispatch(setCustomersSortBy(option.id as SortOption));
+              }
+              setIsSortDropdownOpen(false);
+            }}
+          />
         </View>
 
         {/* Interested In Filter */}

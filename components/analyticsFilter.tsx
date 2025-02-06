@@ -159,7 +159,7 @@ const AnalyticsFilter = ({ onClose }: AnalyticsFilterProps) => {
                     onPress={() => handleQuickFilter(filter)}
                     style={{ width: '31%', marginBottom: 8 }}
                     className={`border rounded-full p-2 items-center justify-center ${
-                      isSelected ? 'bg-color1 border-color1' : 'bg-gray-50 border-gray-200'
+                      isSelected ? 'bg-color1 border-color1' : 'bg-white border-gray-200'
                     }`}
                   >
                     <Text className={`text-xs ${isSelected ? 'text-white' : 'text-gray-600'} text-center`}>
@@ -187,8 +187,7 @@ const AnalyticsFilter = ({ onClose }: AnalyticsFilterProps) => {
               <View className="flex-1">
                 <Text className="text-xs text-gray-600 font-medium">From</Text>
                 <TouchableOpacity
-                  className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-                  style={{ backgroundColor: "#FAFAFA" }}
+                  className="mt-3 border border-gray-200 rounded-md px-3 py-2 flex-row justify-between items-center"
                   onPress={() => {
                     setSelectingFor("from");
                     setShowCalendar(true);
@@ -203,12 +202,12 @@ const AnalyticsFilter = ({ onClose }: AnalyticsFilterProps) => {
               <View className="flex-1">
                 <Text className="text-xs text-gray-600 font-medium">To</Text>
                 <TouchableOpacity
-                  className="mt-3 border border-gray-200 rounded-md p-3 flex-row justify-between items-center"
-                  style={{ backgroundColor: "#FAFAFA" }}
+                  className="mt-3 border border-gray-200 rounded-md px-3 py-2 flex-row justify-between items-center"
                   onPress={() => {
                     setSelectingFor("to");
                     setShowCalendar(true);
                   }}
+
                 >
                   <Text className={`font-semibold text-xs ${analyticsToDate ? 'text-color1' : 'text-gray-400'}`}>
                     {analyticsToDate ? dayjs(analyticsToDate).format("DD-MM-YYYY") : "Select date"}
