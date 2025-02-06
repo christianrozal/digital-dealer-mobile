@@ -13,6 +13,7 @@ import { Query, ID } from "appwrite";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
 import { Alert } from "react-native";
+import { setUserData } from "@/lib/store/userSlice";
 
 // Define interfaces at the top of the file
 interface User {
@@ -212,6 +213,52 @@ const CustomerAssignmentScreen = () => {
           }
         );
         console.log("Successfully updated scan:", updatedScan);
+
+        // Get the full scan data with customer information
+        const fullScanData = await databases.getDocument(
+          databaseId,
+          scansId,
+          latestScan.$id
+        );
+
+        console.log("Full scan data for Redux:", fullScanData);
+
+        // Update the user's scans data in Redux
+        if (userData && userData.scans) {
+          const updatedScans = userData.scans.map(scan =>
+            scan.$id === latestScan.$id
+              ? { 
+                  ...fullScanData, // Include all database fields
+                  users: selectedUser.$id,
+                  user: {
+                    $id: selectedUser.$id,
+                    name: selectedUser.name,
+                    profileImage: selectedUser.profileImage
+                  },
+                  customers: {
+                    $id: customer.id || customer.$id,
+                    name: customer.name,
+                    phone: customer.phone,
+                    email: customer.email,
+                    profileImage: customer.profileImage,
+                    interestStatus: customer.interestStatus || "Hot",
+                    interestedIn: customer.interestedIn || "Buying"
+                  }
+                }
+              : scan
+          );
+          
+          // Update Redux with the complete data
+          dispatch(setUserData({ 
+            ...userData, 
+            scans: updatedScans 
+          }));
+
+          console.log("Updated user data in Redux:", {
+            scansCount: updatedScans.length,
+            latestScan: updatedScans.find(s => s.$id === latestScan.$id)
+          });
+        }
       } catch (error) {
         console.error("Error updating scan document:", error);
         throw error;
@@ -220,13 +267,28 @@ const CustomerAssignmentScreen = () => {
       try {
         // Create notification only if this is a reassignment to a different consultant
         const previousScan = customer.scans?.[1]; // Get the second most recent scan (if it exists)
+        console.log("Previous scan data:", {
+          previousScan,
+          rawUsers: previousScan?.users,
+          scansArray: customer.scans
+        });
+
         const previousUserId = typeof previousScan?.users === 'string' ? previousScan.users : previousScan?.users?.$id;
+        console.log("Previous user analysis:", {
+          previousUserId,
+          type: typeof previousScan?.users,
+          currentSelectedUserId: selectedUser.$id,
+          isReassignment: previousUserId && previousUserId !== selectedUser.$id
+        });
         
         // Only create notification if there was a previous user and it's different from the current selection
         if (previousUserId && previousUserId !== selectedUser.$id) {
-          console.log("Creating reassignment notification:", {
-            userId: selectedUser.$id,
-            customerId: customer.id || customer.$id
+          const customerId = customer.id || customer.$id;
+          console.log("Attempting to create notification:", {
+            previousUserId,
+            newUserId: selectedUser.$id,
+            customerId,
+            notificationType: 'reassigned'
           });
 
           // Create notification for reassignment only
@@ -238,13 +300,21 @@ const CustomerAssignmentScreen = () => {
               type: 'reassigned',
               read: false,
               users: [selectedUser.$id],
-              customers: [customer.id || customer.$id]
+              customers: [customerId],
+              priorUsers: previousUserId
             }
           );
           console.log("Successfully created notification:", notification);
+        } else {
+          console.log("Skipping notification creation because:", {
+            hasPreviousUser: !!previousUserId,
+            isSameUser: previousUserId === selectedUser.$id,
+            previousUserId,
+            selectedUserId: selectedUser.$id
+          });
         }
       } catch (error) {
-        console.error("Error creating notification:", error);
+        console.error("Error in notification process:", error);
         throw error;
       }
 

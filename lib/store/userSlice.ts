@@ -21,6 +21,13 @@ interface DealershipLevel3 {
 interface Scan {
     $id: string;
     $createdAt: string;
+    users: string | { $id: string; name?: string; profileImage?: string; [key: string]: any };
+    user?: {
+        $id: string;
+        name: string;
+        profileImage?: string;
+        [key: string]: any;
+    };
     customers?: {
         $id: string;
         name?: string;

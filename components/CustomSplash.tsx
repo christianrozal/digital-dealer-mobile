@@ -9,7 +9,7 @@ const CustomSplash = () => {
         style={{ width: 120, height: 120 }}
       />
       <Text className="text-2xl font-semibold mt-4">Digital Dealer</Text>
-      <Text className="text-[12px] text-color2 mt-1">POWERED BY ALEXIUM</Text>
+      <Text className="text-[10px] text-color2 mt-1">POWERED BY ALEXIUM</Text>
     </View>
   );
 };

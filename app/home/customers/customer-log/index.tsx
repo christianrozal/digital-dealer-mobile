@@ -13,7 +13,7 @@ import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ButtonComponent from "@/components/button";
 import { setUserData } from "@/lib/store/userSlice";
 import { setCurrentCustomer } from "@/lib/store/currentSlice";
-import { databases, databaseId, commentsId, scansId, usersId } from "@/lib/appwrite";
+import { databases, databaseId, commentsId, scansId, usersId, notificationsId } from "@/lib/appwrite";
 import { Query, ID } from "react-native-appwrite";
 import DotsIcon from "@/components/svg/dotsIcon";
 import DeleteIcon from "@/components/svg/deleteIcon";
@@ -32,8 +32,13 @@ interface User {
 interface Scan {
   $id: string;
   $createdAt: string;
-  users?: string;
-  user?: User;
+  users: string | { $id: string; name?: string; profileImage?: string; [key: string]: any };
+  user?: {
+    $id: string;
+    name: string;
+    profileImage?: string;
+    [key: string]: any;
+  };
   customers: CustomerData;
   interestStatus?: string;
   interestedIn?: string;
@@ -95,23 +100,51 @@ const CustomerLogScreen = () => {
     const currentScanId = useSelector((state: RootState) => state.current.currentScan);
     const userData = useSelector((state: RootState) => state.user.data);
 
+    console.log("Customer Log Initial Data:", {
+        currentCustomerId,
+        currentScanId,
+        userScans: userData?.scans?.map(scan => ({
+            scanId: scan.$id,
+            customerId: scan.customers?.$id,
+            userId: typeof scan.users === 'string' ? scan.users : scan.users?.$id
+        }))
+    });
+
     // Find the current scan and customer data from userSlice
-    const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
-    
+    const currentScan = userData?.scans?.find(scan => {
+        const scanId = scan.$id;
+        const matches = scanId === currentScanId;
+        console.log("Comparing scan:", {
+            scanId,
+            currentScanId,
+            matches,
+            scanData: scan
+        });
+        return matches;
+    });
+
     // Get customer data directly from the scan
     const customerData = currentScan?.customers;
 
     // Log detailed data for debugging
     useEffect(() => {
-        console.log('CustomerLogScreen - Detailed Data:', {
+        console.log('CustomerLogScreen - Full Data:', {
             currentCustomerId,
             currentScanId,
+            userDataExists: !!userData,
+            scansCount: userData?.scans?.length,
             currentScan: currentScan ? {
                 id: currentScan.$id,
                 customerId: currentScan.customers?.$id,
-                customerData: currentScan.customers
+                customerData: currentScan.customers,
+                fullScan: currentScan
             } : null,
-            finalCustomerData: customerData
+            finalCustomerData: customerData,
+            allScans: userData?.scans?.map(scan => ({
+                id: scan.$id,
+                customerId: scan.customers?.$id,
+                scanUsers: typeof scan.users === 'string' ? scan.users : scan.users?.$id
+            }))
         });
 
         // If we don't have currentCustomerId but we have customerData, update it
@@ -335,9 +368,16 @@ const CustomerLogScreen = () => {
                 updateData
             );
 
+            // Get the full updated scan data
+            const updatedScanData = await databases.getDocument(
+                databaseId,
+                scansId,
+                currentScanId
+            );
+
             // Create comment if there's text
             if (comment.trim() && currentCustomerId && userData?.$id) {
-                await databases.createDocument(
+                const newComment = await databases.createDocument(
                     databaseId,
                     commentsId,
                     ID.unique(),
@@ -369,56 +409,38 @@ const CustomerLogScreen = () => {
             // Update userData in Redux
             if (userData && userData.scans) {
                 const updatedScans = userData.scans.map(scan =>
-                    scan.$id === currentScanId ? { ...scan, ...updateData } : scan
-                );
-                dispatch(setUserData({ ...userData, scans: updatedScans }));
-            }
-
-            // Fetch updated thread data
-            if (currentCustomerId) {
-                const scansResponse = await databases.listDocuments(
-                    databaseId,
-                    scansId,
-                    [
-                        Query.equal('customers', currentCustomerId),
-                        Query.orderDesc('$createdAt')
-                    ]
+                    scan.$id === currentScanId 
+                        ? {
+                            ...scan,
+                            ...updatedScanData,
+                            customers: scan.customers, // Preserve existing customer data
+                            users: scan.users, // Preserve existing users data
+                            user: scan.user // Preserve existing user data
+                        }
+                        : scan
                 );
 
-                // Process assignments chronologically from oldest to newest
-                const assignments: AssignmentHistory[] = [];
-                let lastAssignedUserId: string | null = null;
-
-                // Reverse the array to process from oldest to newest
-                const orderedScans = [...scansResponse.documents].reverse();
-
-                for (let i = 0; i < orderedScans.length; i++) {
-                    const scan = orderedScans[i];
-                    const userId = typeof scan.users === 'string' ? scan.users : scan.users?.$id;
-                    
-                    // Add to history if:
-                    // 1. This is the first scan (i === 0), or
-                    // 2. The user is different from the last assigned user
-                    if (userId && (i === 0 || userId !== lastAssignedUserId)) {
-                        assignments.push({
-                            date: scan.$createdAt,
-                            userId: userId,
-                            userName: scan.users?.name || 'Unknown User',
-                            profileImage: scan.users?.profileImage
-                        });
-                        lastAssignedUserId = userId;
-                    }
-                }
-
-                // Sort by date in descending order (newest first)
-                assignments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                setAssignmentHistory(assignments);
+                dispatch(setUserData({ 
+                    ...userData, 
+                    scans: updatedScans 
+                }));
             }
 
-            console.log('Scan updated successfully:', response);
+            Alert.alert("Success", "Customer log updated successfully");
+
         } catch (error) {
             console.error('Error updating scan:', error);
-            Alert.alert('Error', 'Failed to update scan');
+            if (error instanceof Error) {
+                if (error.message.includes('CORS')) {
+                    Alert.alert('Error', 'Network connection issue. Please try again.');
+                } else if (error.message.includes('Failed to fetch')) {
+                    Alert.alert('Error', 'Connection failed. Please check your internet connection.');
+                } else {
+                    Alert.alert('Error', 'Failed to update customer log. Please try again.');
+                }
+            } else {
+                Alert.alert('Error', 'Failed to update customer log');
+            }
         } finally {
             setIsUpdating(false);
         }

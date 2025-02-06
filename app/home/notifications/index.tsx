@@ -102,6 +102,7 @@ const NotificationsScreen = () => {
         databaseId,
         notificationsId,
         [
+          Query.equal('priorUsers', userData?.$id || ''),
           Query.orderDesc('$createdAt'),
           Query.limit(50)
         ]
@@ -117,14 +118,10 @@ const NotificationsScreen = () => {
 
   const getNotificationMessage = (type: string, customer: string) => {
     switch (type) {
-      case 'first_assigned':
-        return ['New customer ', customer, ' has been assigned to you'];
-      case 'subsequent_assignment':
-        return ['', customer, ' has been assigned to you again'];
       case 'reassigned':
-        return ['', customer, ' has been reassigned to you'];
+        return ['Customer ', customer, ' has been reassigned to another consultant'];
       default:
-        return ['Customer ', customer, ' has been assigned'];
+        return ['Customer ', customer, ' has been reassigned'];
     }
   };
 
@@ -274,7 +271,7 @@ const NotificationsScreen = () => {
                   <>
                     {today.length > 0 && (
                       <View>
-                        <Text className="text-base font-semibold mb-2">Today</Text>
+                        <Text className="text-base font-semibold mb-2 mt-4">Today</Text>
                         {today.map(renderNotification)}
                       </View>
                     )}

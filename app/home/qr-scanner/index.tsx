@@ -11,6 +11,7 @@ import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
 import { databases, databaseId, customersId, scansId } from "@/lib/appwrite";
 import UploadIcon from "@/components/svg/uploadIcon";
+import { setUserData } from "@/lib/store/userSlice";
 
 interface Customer {
   id: string;
@@ -122,11 +123,61 @@ const QrScannerScreen = () => {
 
       console.log("Created scan document:", scanDocument);
 
+      // Update the user's scans data in Redux
+      if (userData && userData.scans) {
+        // Get the full scan data
+        const fullScan = await databases.getDocument(
+          databaseId,
+          scansId,
+          scanDocument.$id
+        );
+
+        console.log("Full scan data from database:", fullScan);
+
+        const updatedScans = [
+          {
+            ...fullScan, // Include all database fields
+            $id: scanDocument.$id,
+            users: userData.$id,
+            user: {
+              $id: userData.$id,
+              name: userData.name,
+              profileImage: userData.profileImage
+            },
+            customers: {
+              $id: customer.id,
+              name: customer.name,
+              phone: customer.phone,
+              email: customer.email,
+              profileImage: customer.profileImage,
+              interestStatus: "Hot",
+              interestedIn: "Buying"
+            }
+          },
+          ...userData.scans
+        ];
+        
+        console.log("First scan in updated scans:", updatedScans[0]);
+        
+        dispatch(setUserData({
+          ...userData,
+          scans: updatedScans
+        }));
+        
+        console.log("Updated user's scans in Redux:", {
+          scansCount: updatedScans.length,
+          latestScanId: updatedScans[0].$id,
+          latestScanCustomerId: updatedScans[0].customers.$id
+        });
+      }
+
       // Dispatch the new scan ID to currentSlice
       dispatch(setCurrentScan(scanDocument.$id));
       dispatch(setCurrentCustomer(customerId));
-      console.log("Dispatched currentScan ID to store:", scanDocument.$id);
-      console.log("Dispatched currentCustomer ID to store:", customerId);
+      console.log("Final Redux state:", {
+        currentScanId: scanDocument.$id,
+        currentCustomerId: customerId
+      });
 
       router.push("/home/customers/customer-assignment");
     } catch (err) {
