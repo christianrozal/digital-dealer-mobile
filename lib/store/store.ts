@@ -9,7 +9,7 @@ import consultantReducer from './consultantSlice';
 import commentReducer from './commentSlice';
 import dealershipUsersReducer from './dealershipUsersSlice';
 import scanReducer from './scanSlice';
-
+import notificationsReducer from './notificationsSlice';
 const rootReducer = combineReducers({
   sidePane: sidePaneReducer,
   ui: uiReducer,
@@ -19,7 +19,8 @@ const rootReducer = combineReducers({
   consultant: consultantReducer,
   comment: commentReducer,
   dealershipUsers: dealershipUsersReducer,
-  scan: scanReducer
+  scan: scanReducer,
+  notifications: notificationsReducer
 });
 
 const store = configureStore({

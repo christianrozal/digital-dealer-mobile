@@ -20,6 +20,8 @@ import CustomersIcon from "@/components/svg/customersIcon";
 import ScannerIcon from "@/components/svg/scannerIcon";
 import { databases, databaseId, usersId } from "@/lib/appwrite";
 import { setUserData } from "@/lib/store/userSlice";
+import SuccessAnimation from "@/components/successAnimation";
+import { setCustomerUpdateSuccess } from "@/lib/store/uiSlice";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -34,10 +36,14 @@ const HomeLayout = () => {
     const isAnalyticsFilterVisible = useSelector(
         (state: RootState) => state.ui.isAnalyticsFilterVisible
     );
-
+    const customerUpdateSuccess = useSelector((state: RootState) => state.ui.customerUpdateSuccess);
     const userData = useSelector((state: RootState) => state.user.data);
     const pathname = usePathname();
     const translateX = useSharedValue(-SCREEN_WIDTH * 0.95);
+
+    // Assume notifications are stored in state.notifications.documents
+    const notifications = useSelector((state: RootState) => state.notifications.documents);
+    const hasUnreadNotifications = notifications ? notifications.some((n: any) => !n.read) : false;
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -109,135 +115,140 @@ const HomeLayout = () => {
     return (
         <GestureDetector gesture={openGesture}>
             <View className="flex-1 bg-white">
-            {shouldRenderLayout ? (
-                <>
-                <View
-
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        zIndex: 50,
-                        width: '100%',
-                        height: '100%',
-                        backgroundColor: 'black',
-                        opacity: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 0.1 : 0,
-                        pointerEvents: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 'auto' : 'none',
-                    }}
-                />
-                {/* Header */}
-                <View className="absolute top-0 left-0 right-0 h-[60px] flex-row justify-between items-center px-5 z-20 bg-white">
-                    {/* User Icon */}
-                    <TouchableOpacity
-                        onPress={() => {
-                            if (translateX.value === -SCREEN_WIDTH * 0.95) {
-                                translateX.value = withSpring(0);
-                            }
+                {customerUpdateSuccess && (
+                    <SuccessAnimation
+                        message="Customer Created"
+                        isSuccess={true}
+                        onAnimationComplete={() => dispatch(setCustomerUpdateSuccess(false))}
+                    />
+                )}
+                {shouldRenderLayout ? (
+                    <>
+                    <View
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            zIndex: 50,
+                            width: '100%',
+                            height: '100%',
+                            backgroundColor: 'black',
+                            opacity: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 0.1 : 0,
+                            pointerEvents: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 'auto' : 'none',
                         }}
-                    >
-                        <View
-                            style={{
-                                backgroundColor: '#3D12FA', // color1
-                                borderRadius: 9999,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 32,
-                                height: 32
+                    />
+                    {/* Header */}
+                    <View className="absolute top-0 left-0 right-0 h-[60px] flex-row justify-between items-center px-5 z-20 bg-white">
+                        {/* User Icon */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (translateX.value === -SCREEN_WIDTH * 0.95) {
+                                    translateX.value = withSpring(0);
+                                }
                             }}
                         >
-                            {userData?.profileImage ? (
-                                <Image
-                                    source={{ uri: userData.profileImage }}
-                                    style={{ width: 32, height: 32, borderRadius: 16 }}
-                                />
-                            ) : (
-                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
-                                    {getInitials(userData?.name || '')}
-                                </Text>
-                            )}
+                            <View
+                                style={{
+                                    backgroundColor: '#3D12FA', // color1
+                                    borderRadius: 9999,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: 32,
+                                    height: 32
+                                }}
+                            >
+                                {userData?.profileImage ? (
+                                    <Image
+                                        source={{ uri: userData.profileImage }}
+                                        style={{ width: 32, height: 32, borderRadius: 16 }}
+                                    />
+                                ) : (
+                                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+                                        {getInitials(userData?.name || '')}
+                                    </Text>
+                                )}
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Logo */}
+                        <View>
+                            <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
                         </View>
-                    </TouchableOpacity>
 
-                    {/* Logo */}
-                    <View>
-                        <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
+                        {/* Header Icons */}
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                            <TouchableOpacity onPress={() => router.push("/home/analytics")}>
+                                <AnalyticsIcon
+                                    width={20}
+                                    height={20}
+                                    stroke={pathname === "/home/analytics" ? "#3D12FA" : "#9EA5AD"}
+                                />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => router.push("/home/notifications")}
+                            >
+                                <NotificationsIcon
+                                    width={20}
+                                    height={20}
+                                    stroke={pathname === "/home/notifications" ? "#3D12FA" : "#9EA5AD"}
+                                    hasUnread={hasUnreadNotifications}
+                                />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
-                    {/* Header Icons */}
-                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        <TouchableOpacity onPress={() => router.push("/home/analytics")}>
-                            <AnalyticsIcon
-                                width={20}
-                                height={20}
-                                stroke={pathname === "/home/analytics" ? "#3D12FA" : "#9EA5AD"}
-                            />
-                        </TouchableOpacity>
+
+                    {/* Side Pane */}
+                    <SidePaneComponent translateX={translateX} />
+
+
+                       {/* Bottom Navigation */}
+            <View className="absolute bottom-0 left-0 right-0 h-[70px] flex-row justify-center items-center gap-10 bg-white border-t border-gray-100 z-10">
                         <TouchableOpacity
-                            onPress={() => router.push("/home/notifications")}
+                style={{ alignItems: 'center' }}
+                            onPress={() => router.push("/home")}
                         >
-                            <NotificationsIcon
-                                width={20}
-                                height={20}
-                                stroke={
-                                    pathname === "/home/notifications" ? "#3D12FA" : "#9EA5AD"
-                                }
+                            <ActivityIcon
+                                stroke={pathname === "/home" ? "#3D12FA" : "#BECAD6"}
+                            />
+                <Text style={{ 
+                    fontSize: 10,
+                    color: '#6b7280',
+                    fontWeight: '600',
+                    marginTop: 4
+                }}>
+                                Activity
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => router.push("/home/qr-scanner")}>
+                            <ScannerIcon
+                                fgColor={pathname === "/home/qr-scanner" ? "#3D12FA" : "#BECAD6"}
                             />
                         </TouchableOpacity>
+
+                        <TouchableOpacity
+                style={{ alignItems: 'center' }}
+                            onPress={() => router.push("/home/customers")}
+                        >
+                            <CustomersIcon
+                                stroke={pathname === "/home/customers" ? "#3D12FA" : "#BECAD6"}
+                            />
+                <Text style={{ 
+                    fontSize: 10,
+                    color: '#6b7280',
+                    fontWeight: '600',
+                    marginTop: 4
+                }}>
+                                Customers
+                            </Text>
+                        </TouchableOpacity>
                     </View>
-                </View>
-
-
-                {/* Side Pane */}
-                <SidePaneComponent translateX={translateX} />
-
-
-                   {/* Bottom Navigation */}
-        <View className="absolute bottom-0 left-0 right-0 h-[70px] flex-row justify-center items-center gap-10 bg-white border-t border-gray-100 z-10">
-                    <TouchableOpacity
-            style={{ alignItems: 'center' }}
-                        onPress={() => router.push("/home")}
-                    >
-                        <ActivityIcon
-                            stroke={pathname === "/home" ? "#3D12FA" : "#BECAD6"}
-                        />
-            <Text style={{ 
-                fontSize: 10,
-                color: '#6b7280',
-                fontWeight: '600',
-                marginTop: 4
-            }}>
-                            Activity
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={() => router.push("/home/qr-scanner")}>
-                        <ScannerIcon
-                            fgColor={pathname === "/home/qr-scanner" ? "#3D12FA" : "#BECAD6"}
-                        />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-            style={{ alignItems: 'center' }}
-                        onPress={() => router.push("/home/customers")}
-                    >
-                        <CustomersIcon
-                            stroke={pathname === "/home/customers" ? "#3D12FA" : "#BECAD6"}
-                        />
-            <Text style={{ 
-                fontSize: 10,
-                color: '#6b7280',
-                fontWeight: '600',
-                marginTop: 4
-            }}>
-                            Customers
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-                <Slot />
-                </>
-            ) : (
-                <Slot />
-            )}
+                    <Slot />
+                    </>
+                ) : (
+                    <Slot />
+                )}
             </View>
         </GestureDetector>
     );

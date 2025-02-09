@@ -1,16 +1,18 @@
 import React from "react";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Path, Circle } from "react-native-svg";
 
 interface NotificationsIconProps {
   width?: number;
   height?: number;
   stroke?: string;
+  hasUnread?: boolean;
 }
 
 const NotificationsIcon: React.FC<NotificationsIconProps> = ({
   width = 18,
   height = 18,
   stroke = "#9EA5AD",
+  hasUnread = false,
 }) => {
   return (
     <Svg width={width} height={height} viewBox="0 0 18 18" fill="none">
@@ -21,6 +23,7 @@ const NotificationsIcon: React.FC<NotificationsIconProps> = ({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      {hasUnread && <Circle cx="14" cy="4" r="2" fill="red" />}
     </Svg>
   );
 };

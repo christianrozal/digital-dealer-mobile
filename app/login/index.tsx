@@ -241,8 +241,8 @@ const LoginScreen = () => {
         </Text>
       )}
 
-      {/* Login Button */}
-      <View className="w-full mt-5">
+      {/* Login Button */ }
+      <View className="w-full mt-8">
         <ButtonComponent
           label="Login"
           onPress={handleLogin}

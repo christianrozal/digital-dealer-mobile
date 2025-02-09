@@ -11,7 +11,6 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 interface Notification extends Models.Document {
-  type: 'first_assigned' | 'subsequent_assignment' | 'reassigned';
   users: string[];
   customers: { name: string; profileImage?: string }[];
   read: boolean;
@@ -68,14 +67,17 @@ const NotificationsScreen = () => {
         databaseId,
         notificationsId,
         [
-          Query.equal('users', userData?.$id || ''),
           Query.orderDesc('$createdAt'),
           Query.limit(50)
         ]
-
       );
-
-      setNotifications(response.documents);
+      
+      // Client-side filter: Only show notifications if some object in the `users` array has id matching current user id.
+      const notificationsForCurrentUser = response.documents.filter(notification =>
+        notification.users?.some((user: any) => user.$id === (userData?.$id || ''))
+      );
+      
+      setNotifications(notificationsForCurrentUser);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -162,46 +164,51 @@ const NotificationsScreen = () => {
     }, { today: [] as Notification[], older: [] as Notification[] });
   };
 
-  const renderNotification = (notification: Notification) => (
-    <View 
-      key={notification.$id}
-      className={`p-3 ${notification.read ? 'bg-white' : 'bg-color3'} mt-3 rounded-md flex-row gap-3 items-center`}
-    >
-      {notification.customers[0].profileImage ? (
-        <Image
-          source={{ uri: notification.customers[0].profileImage }}
-          className="w-9 h-9 rounded-full"
-          resizeMode="cover"
-        />
-      ) : (
-        <View className="w-9 h-9 bg-color1 rounded-full flex items-center justify-center">
-          <Text className="text-white font-bold text-xs">
-            {getInitials(notification.customers[0].name || '')}
+  const renderNotification = (notification: Notification) => {
+    // Use optional chaining to safely access customers and their properties.
+    const customerData = notification.customers?.[0];
+
+    return (
+      <View 
+        key={notification.$id}
+        className={`p-3 ${notification.read ? 'bg-white' : 'bg-color3'} mt-3 rounded-md flex-row gap-3 items-center`}
+      >
+        {customerData?.profileImage ? (
+          <Image
+            source={{ uri: customerData.profileImage }}
+            className="w-9 h-9 rounded-full"
+            resizeMode="cover"
+          />
+        ) : (
+          <View className="w-9 h-9 bg-color1 rounded-full flex items-center justify-center">
+            <Text className="text-white font-bold text-xs">
+              {getInitials(customerData?.name || '')}
+            </Text>
+          </View>
+        )}
+        <View className="flex-1 gap-1">
+          <Text className="text-sm">
+            {(() => {
+              const [prefix, name, suffix] = getNotificationMessage(
+                notification.type, 
+                customerData?.name || 'Unknown Customer'
+              );
+              return (
+                <>
+                  {prefix}
+                  <Text className="font-bold text-color1 text-sm">{name}</Text>
+                  {suffix}
+                </>
+              );
+            })()}
+          </Text>
+          <Text className="text-xs text-gray-500">
+            {formatDate(notification.$createdAt)}
           </Text>
         </View>
-      )}
-      <View className="flex-1 gap-1">
-        <Text className="text-sm">
-          {(() => {
-            const [prefix, name, suffix] = getNotificationMessage(
-              notification.type, 
-              notification.customers[0].name || 'Unknown Customer'
-            );
-            return (
-              <>
-                {prefix}
-                <Text className="font-bold text-color1 text-sm">{name}</Text>
-                {suffix}
-              </>
-            );
-          })()}
-        </Text>
-        <Text className="text-xs text-gray-500">
-          {formatDate(notification.$createdAt)}
-        </Text>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <ScrollView className="flex-1 bg-white">

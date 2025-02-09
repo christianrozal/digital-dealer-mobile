@@ -27,7 +27,7 @@ const CustomerAssignmentScreen = () => {
   const dealershipUsers = useSelector((state: RootState) => state.dealershipUsers.data);
   const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
   const currentUserId = useSelector((state: RootState) => state.current.currentUserId);
-
+  const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomerId);
   const [selectedName, setSelectedName] = useState<string | null>(
     userData?.name || null
   );
@@ -36,7 +36,7 @@ const CustomerAssignmentScreen = () => {
   const dispatch = useDispatch();
 
   // Find the current scan and its customer data from userData
-  const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
+  const currentScan = userData?.scans?.find((scan: { $id: string }) => scan.$id === currentScanId);
   const customer = currentScan?.customers || null;
 
   const getInitials = (name: string) => {
@@ -136,19 +136,30 @@ const CustomerAssignmentScreen = () => {
       console.log("Updated scan scanSlice:", currentScanId);
 
       try {
-        // Create notification only if this is a reassignment to a different consultant
-        const previousScan = userData?.scans?.find(scan => scan.$id !== currentScanId); // Get the second most recent scan (if it exists)
-        const previousUserId = typeof previousScan?.users === 'string' ? previousScan.users : previousScan?.users?.$id;
+        // Instead of using .find(), sort the scans (from scanData.data) by $createdAt descending
+        const previousScan = scanData?.data
+          ?.filter(scan => scan.$id !== currentScanId)
+          ?.sort((a, b) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime())[0];
+
+        const previousUserId = previousScan
+          ? (typeof previousScan.users === 'string' ? previousScan.users : previousScan.users?.$id)
+          : null;
         
-        // Only create notification if there was a previous user and it's different from the current selection
+        console.log("Debug Info:", {
+          previousScan,
+          previousUserId,
+          selectedUserId: selectedUser.$id,
+        });
+        
+        console.log("Previous scan document ID:", previousScan?.$id);
+        
         if (previousUserId && previousUserId !== selectedUser.$id) {
-          const customerId = currentUserId;
           console.log("Attempting to create notification:", {
             previousUserId,
             selectedUserId: selectedUser.$id,
-            customerId
+            customerId: currentCustomerId,
           });
-
+          
           await databases.createDocument(
             databaseId,
             notificationsId,
@@ -156,10 +167,12 @@ const CustomerAssignmentScreen = () => {
             {
               type: 'reassignment',
               read: false,
-              users: previousUserId,
-              customers: [customerId]
+              users: [previousUserId],
+              customers: [currentCustomerId]
             }
           );
+        } else {
+          console.log("No reassignment needed.");
         }
       } catch (error) {
         console.error("Error creating notification:", error);

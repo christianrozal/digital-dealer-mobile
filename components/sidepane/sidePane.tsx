@@ -27,15 +27,16 @@ import LogoutIcon from "../svg/logoutIcon";
 import { Account, Client } from "react-native-appwrite";
 import ProfileIcon from "../svg/profileIcon";
 import Select from "@/components/rnr/select";
-import { setCurrentDealershipLevel2, setCurrentDealershipLevel3 } from '@/lib/store/currentSlice';
+import { setCurrentDealershipLevel2Id, setCurrentDealershipLevel3Id } from '@/lib/store/currentSlice';
 import { setSelectedRooftopData } from '@/lib/store/rooftopSlice';
 import { setUserData } from '@/lib/store/userSlice';
-import { setCurrentDealershipLevel1 } from '@/lib/store/currentSlice';
-import { setCurrentConsultant } from '@/lib/store/currentSlice';
+import { setCurrentDealershipLevel1Id } from '@/lib/store/currentSlice';
+import { setCurrentUserId } from '@/lib/store/currentSlice';
 import ButtonComponent from "@/components/button";
 import SwitchIcon from "@/components/svg/switchIcon";
-import { databases, databaseId, usersId } from '@/lib/appwrite';
+import { databases, databaseId, usersId, scansId } from '@/lib/appwrite';
 import { Query } from 'appwrite';
+import { setScans } from '@/lib/store/scanSlice';
 
 interface DealershipLevel2 {
     $id: string;
@@ -92,8 +93,8 @@ const SidePaneComponent = ({
 }) => {
     const dispatch = useDispatch<AppDispatch>();
     const userData = useSelector((state: RootState) => state.user.data) as UserData;
-    const currentDealershipLevel2Id = useSelector((state: RootState) => state.current.currentDealershipLevel2);
-    const currentDealershipLevel3Id = useSelector((state: RootState) => state.current.currentDealershipLevel3);
+    const currentDealershipLevel2Id = useSelector((state: RootState) => state.current.currentDealershipLevel2Id);
+    const currentDealershipLevel3Id = useSelector((state: RootState) => state.current.currentDealershipLevel3Id);
     const [qrData, setQrData] = useState<string | null>(null);
     const [isDealershipDropdownOpen, setIsDealershipDropdownOpen] = useState(false);
     const [isRooftopDropdownOpen, setIsRooftopDropdownOpen] = useState(false);
@@ -196,8 +197,6 @@ const SidePaneComponent = ({
         
         setIsSwitching(true);
         try {
-            // Logs removed for production
-            
             // 1. Fetch fresh user data
             const session = await account.get();
             const response = await databases.listDocuments(
@@ -208,25 +207,42 @@ const SidePaneComponent = ({
 
             if (response.documents.length > 0) {
                 const freshUserData = response.documents[0] as UserData;
-                // Logs removed for production
 
                 // 2. Update current states first
                 const level1Id = freshUserData.dealershipLevel1?.[0]?.$id;
                 if (level1Id) {
-                    dispatch(setCurrentDealershipLevel1(level1Id));
+                    dispatch(setCurrentDealershipLevel1Id(level1Id));
                 }
 
                 if (selectedRooftop) {
-                    dispatch(setCurrentDealershipLevel2(selectedRooftop.dealershipLevel2.$id));
-                    dispatch(setCurrentDealershipLevel3(selectedRooftop.$id));
+                    dispatch(setCurrentDealershipLevel2Id(selectedRooftop.dealershipLevel2.$id));
+                    dispatch(setCurrentDealershipLevel3Id(selectedRooftop.$id));
                     dispatch(setSelectedRooftopData(selectedRooftop));
                 } else {
-                    dispatch(setCurrentDealershipLevel2(selectedDealership.$id));
-                    dispatch(setCurrentDealershipLevel3(null));
+                    dispatch(setCurrentDealershipLevel2Id(selectedDealership.$id));
+                    dispatch(setCurrentDealershipLevel3Id(null));
                 }
-                dispatch(setCurrentConsultant(freshUserData.$id || null));
+                dispatch(setCurrentUserId(freshUserData.$id || null));
 
-                // 3. Filter scans based on selection
+                // 3. Fetch scans for the selected dealership/rooftop from the scans collection
+                try {
+                    const scansResponse = await databases.listDocuments(
+                        databaseId,
+                        scansId,
+                        [
+                            selectedRooftop 
+                                ? Query.equal('dealershipLevel3', selectedRooftop.$id)
+                                : Query.equal('dealershipLevel2', selectedDealership.$id)
+                        ]
+                    );
+                    console.log('Scans (sidepane switch):', scansResponse.documents);
+                    dispatch(setScans(scansResponse.documents));
+                } catch (error) {
+                    console.error('Error fetching scans in sidepane:', error);
+                    // Optionally, you could dispatch an error action (e.g., setScanError) here
+                }
+
+                // 4. Filter scans based on selection from fresh user data (if needed)
                 const filteredScans = (selectedRooftop
                     ? freshUserData.scans?.filter(scan => scan.dealershipLevel3?.$id === selectedRooftop.$id)
                     : freshUserData.scans?.filter(scan => 
@@ -234,15 +250,12 @@ const SidePaneComponent = ({
                         availableRooftops.some(rooftop => scan.dealershipLevel3?.$id === rooftop.$id)
                     )) || [];
 
-                // Logs removed for production
-
-                // 4. Update Redux with filtered scans
+                // 5. Update Redux with the filtered scans as part of user data
                 dispatch(setUserData({
                     ...freshUserData,
                     scans: filteredScans
                 }));
 
-                // Logs removed for production
                 handleClose();
             }
         } catch (error) {

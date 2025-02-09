@@ -21,6 +21,7 @@ const EditProfileScreen = () => {
         name: userData?.name || ''
     });
     const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
+    const [pendingProfileImage, setPendingProfileImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleInputChange = (field: string, value: string) => {
@@ -38,25 +39,59 @@ const EditProfileScreen = () => {
                 return;
             }
 
-            const payload = {
+            let payload: any = {
                 name: String(formData.name),
-                profileImage: userData?.profileImage || "",
-                profileImageId: userData?.profileImageId || ""
             };
+
+            if (pendingProfileImage) {
+                const { uri } = pendingProfileImage;
+                const fileName = uri.split('/').pop() || 'profile.jpg';
+                const fileType = 'image/jpeg';
+                const response = await fetch(uri);
+                const blob = await response.blob();
+
+                if (userData?.profileImageId) {
+                    try {
+                        await storage.deleteFile(bucketId, userData.profileImageId);
+                    } catch (deleteError) {
+                        console.log('Error deleting previous image:', deleteError);
+                    }
+                }
+
+                const fileData = {
+                    name: fileName,
+                    type: fileType,
+                    size: blob.size,
+                    uri: uri,
+                };
+
+                const uploadResponse = await storage.createFile(
+                    bucketId,
+                    ID.unique(),
+                    fileData
+                );
+
+                const previewUrl = storage.getFilePreview(
+                    bucketId,
+                    uploadResponse.$id,
+                    500,
+                    500
+                );
+
+                payload.profileImage = previewUrl.toString();
+                payload.profileImageId = uploadResponse.$id;
+            }
 
             await databases.updateDocument(
                 databaseId,
                 usersId,
                 userData.$id,
-                {
-                    name: "fdasfasf"
-                }
+                payload
             );
 
             dispatch(setUserData({ ...userData, ...payload }));
             dispatch(setCustomerUpdateSuccess(true));
             router.push("/home/profile");
-
         } catch (error) {
             Alert.alert('Error', 'Failed to update profile');
             console.error('Update error:', error);
@@ -96,67 +131,11 @@ const EditProfileScreen = () => {
 
             if (result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
-                const uri = asset.uri;
-                const fileName = uri.split('/').pop() || 'profile.jpg';
-                const fileType = 'image/jpeg';
-                const response = await fetch(uri);
-                const blob = await response.blob();
-
-                if (userData?.profileImageId) {
-                    try {
-                        await storage.deleteFile(bucketId, userData.profileImageId);
-                    } catch (deleteError) {
-                        console.log('Error deleting previous image:', deleteError);
-                    }
-                }
-
-                const fileData = {
-                    name: fileName,
-                    type: fileType,
-                    size: blob.size,
-                    uri: uri,
-                };
-
-                const uploadResponse = await storage.createFile(
-                    bucketId,
-                    ID.unique(),
-                    fileData
-                );
-
-                const previewUrl = storage.getFilePreview(
-                    bucketId,
-                    uploadResponse.$id,
-                    500,
-                    500
-                );
-
-                setLocalProfileImage(previewUrl.toString());
-
-                const newImage = previewUrl.toString();
-                const newImageId = uploadResponse.$id;
-                const updatedUserData = {
-                    ...userData,
-                    profileImage: newImage,
-                    profileImageId: newImageId
-                };
-
-                dispatch(setUserData(updatedUserData));
-                dispatch(setCustomerUpdateSuccess(true));
-
-                await databases.updateDocument(
-                    databaseId,
-                    usersId,
-                    userData.$id,
-                    {
-                        profileImage: newImage,
-                        profileImageId: newImageId
-                    }
-                );
-
-                router.replace("/home/profile");
+                setLocalProfileImage(asset.uri);
+                setPendingProfileImage(asset);
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to upload image');
+            Alert.alert('Error', 'Failed to select image');
             console.error('Image upload error:', error);
         }
     };

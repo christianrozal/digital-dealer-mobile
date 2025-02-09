@@ -162,7 +162,7 @@ const QrScannerScreen = () => {
             <View className="w-64" />
             <View className="flex-1 bg-black opacity-50" />
           </View>
-          <View className="flex-1 bg-black opacity-50" />
+          <View className="flex-1 bg-black opacity-50 h-auto" />
         </View>
 
         <View className="mt-[25vh]">
