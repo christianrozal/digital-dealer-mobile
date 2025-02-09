@@ -54,12 +54,6 @@ const SelectedCustomerScreen = () => {
   // Calculate scan count from userData.scans using currentCustomerId
   const scanCount = userData?.scans?.filter(scan => {
     const scanCustomerId = scan.customers?.$id;
-    console.log('Scan comparison:', {
-      scanRawCustomers: scan.customers,
-      scanCustomerId,
-      currentCustomerId,
-      match: scanCustomerId === currentCustomerId
-    });
     return scanCustomerId === currentCustomerId;
   }).length || 0;
 
@@ -80,19 +74,6 @@ const SelectedCustomerScreen = () => {
     }
   }, [customerUpdateSuccess, dispatch]);
 
-  useEffect(() => {
-    console.log('Customer Details Screen Data:', {
-      currentScanId,
-      currentCustomerId,
-      scan: currentScan ? {
-        id: currentScan.$id,
-        createdAt: currentScan.$createdAt,
-        interestStatus: currentScan.interestStatus,
-        interestedIn: currentScan.interestedIn,
-        customer: currentScan.customers
-      } : null
-    });
-  }, [currentScan, currentScanId, currentCustomerId, userData?.scans]);
 
   if (!currentScan || !customerData) {
     return (

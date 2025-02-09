@@ -1,13 +1,6 @@
 // components/SuccessAnimation.tsx
-import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-  runOnJS,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Animated } from 'react-native';
 import CheckIcon from '@/components/svg/checkIcon';
 
 interface SuccessAnimationProps {
@@ -21,41 +14,33 @@ const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
   message = "Success",
   isSuccess = true,
 }) => {
-  const translateY = useSharedValue(-40); // Initial position above view
-  const animationDuration = 300;
-  const holdDuration = 2000;
+  const translateY = useRef(new Animated.Value(-40)).current; // Initial position above view
 
   useEffect(() => {
-    translateY.value = withTiming(
-      20,
-      { duration: animationDuration, easing: Easing.ease },
-      () => {
-        // After slide down, hold for a second, and then animate out
-        setTimeout(() => {
-          translateY.value = withTiming(
-            -40,
-            { duration: animationDuration, easing: Easing.ease },
-            () => {
-              runOnJS(() => {
-                if (onAnimationComplete) {
-                  onAnimationComplete();
-                }
-              })();
-            }
-          );
-        }, holdDuration);
-      }
-    );
-  }, [translateY, animationDuration, holdDuration, onAnimationComplete]);
+    console.log("Starting animation with message:", message); // Debug log
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateY: translateY.value }],
-    };
-  });
+    // Start the animation
+    Animated.sequence([
+      Animated.timing(translateY, {
+        toValue: 20,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2000), // Hold for 2 seconds
+      Animated.timing(translateY, {
+        toValue: -40,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      if (onAnimationComplete) {
+        onAnimationComplete();
+      }
+    });
+  }, [translateY, onAnimationComplete, message]);
 
   return (
-    <Animated.View style={animatedStyle} className="w-full z-30 absolute">
+    <Animated.View style={{ transform: [{ translateY }] }} className="w-full z-30 absolute">
       <View
         className={`flex-row items-center justify-center gap-3 w-4/5 mx-auto bg-white rounded-lg p-3 border ${isSuccess ? 'border-color9' : 'border-red-500'}`}
         style={{ boxShadow: '0px 4px 10px 0px rgba(7, 170, 48, 0.25)' }}

@@ -7,24 +7,12 @@ import ButtonComponent from '@/components/button';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
-import { Client, Storage, ID, Databases } from 'react-native-appwrite';
+import { storage, databases } from '@/lib/appwrite';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { setUserData } from '@/lib/store/userSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 import { databaseId, customersId, projectId, bucketId } from '@/lib/appwrite';
-
-// Initialize Appwrite client
-const client = new Client();
-client
-    .setEndpoint('https://cloud.appwrite.io/v1')
-    .setProject(projectId);
-
-const storage = new Storage(client);
-const databases = new Databases(client);
-const BUCKET_ID = bucketId;
-const DATABASE_ID = databaseId;
-const COLLECTION_ID = customersId;
-
+import { ID } from 'appwrite';
 
 interface AppwriteCustomer {
   $id: string;
@@ -63,9 +51,10 @@ interface Scan {
 }
 
 const EditCustomerScreen = () => {
-  const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
-  const currentScanId = useSelector((state: RootState) => state.current.currentScan);
+  const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomerId);
+  const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
   const userData = useSelector((state: RootState) => state.user.data);
+
 
   // Find the current scan and customer data from userSlice
   const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
@@ -116,15 +105,33 @@ const EditCustomerScreen = () => {
     setLoading(true);
     try {
       const appwriteCustomer = customerData as AppwriteCustomer;
-      if (!appwriteCustomer.$id) {
+
+      // Check if customerData is valid
+      if (!appwriteCustomer || !appwriteCustomer.$id) {
         Alert.alert('Error', 'No customer ID found');
+        return;
+      }
+
+      // Log the currentScan to check its value
+      console.log('Current Scan:', currentScan);
+
+      // Check if currentScan is valid
+      if (!currentScan || !currentScan.customers) {
+        Alert.alert('Error', 'No current scan or customer data found');
+        return;
+      }
+
+      // Ensure customers is valid before accessing its properties
+      const scanCustomer = currentScan.customers as AppwriteCustomer;
+      if (!scanCustomer || !scanCustomer.$id) {
+        Alert.alert('Error', 'No customer ID found in current scan');
         return;
       }
 
       // Update Redux state first
       const updatedScans = userData?.scans?.map((scan) => {
-        const scanCustomer = scan.customers as AppwriteCustomer;
-        if (scanCustomer.$id === appwriteCustomer.$id) {
+        // Ensure scan.customers exists before accessing $id
+        if (scan.customers && (scan.customers as AppwriteCustomer).$id === appwriteCustomer.$id) {
           return {
             ...scan,
             customers: {
@@ -147,12 +154,11 @@ const EditCustomerScreen = () => {
           scans: updatedScans as Scan[],
         }));
       }
-      dispatch(setCustomerUpdateSuccess(true));
 
       // Then update database
       await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_ID,
+        databaseId,
+        customersId,
         appwriteCustomer.$id,
         {
           name: formData.name,
@@ -218,23 +224,30 @@ const EditCustomerScreen = () => {
         // Delete old profile image if it exists
         if (appwriteCustomer.profileImageId) {
           try {
-            await storage.deleteFile(BUCKET_ID, appwriteCustomer.profileImageId);
+            await storage.deleteFile(bucketId, appwriteCustomer.profileImageId);
           } catch (error) {
             console.log('No previous image to delete or error deleting:', error);
           }
         }
 
+        // Create an object that matches the expected type
+        const fileData = {
+          name: fileName || 'profile.jpg',
+          type: fileType,
+          size: blob.size,
+          uri: uri // Use uri or another appropriate value for uri
+        };
+
         // Upload new image
-        const file = new File([blob], fileName || 'profile.jpg', { type: fileType });
         const uploadResponse = await storage.createFile(
-          BUCKET_ID,
+          bucketId,
           ID.unique(),
-          file
+          fileData
         );
 
         // Get preview URL
         const previewUrl = storage.getFilePreview(
-          BUCKET_ID,
+          bucketId,
           uploadResponse.$id,
           500,
           500
@@ -265,8 +278,8 @@ const EditCustomerScreen = () => {
 
         // Then update database
         await databases.updateDocument(
-          DATABASE_ID,
-          COLLECTION_ID,
+          databaseId,
+          customersId,
           appwriteCustomer.$id,
           {
             profileImage: previewUrl.toString(),

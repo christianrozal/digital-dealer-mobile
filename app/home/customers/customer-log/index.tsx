@@ -176,6 +176,7 @@ const CustomerLogScreen = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [showCommentSuccess, setShowCommentSuccess] = useState(false);
     const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -582,6 +583,13 @@ const CustomerLogScreen = () => {
         return `${dt.format('D MMM YYYY')} at ${dt.format('h:mm A')}`;
     };
 
+    const handleBackToActivities = async () => {
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+            router.push("/home");
+        }, 1000);
+    };
 
     return (
         <>
@@ -1044,9 +1052,34 @@ const CustomerLogScreen = () => {
                 />
 
                 {/* Back to activities button*/}
-                <ButtonComponent var2 label="Back to Activities" onPress={() => router.push("/home")} className="mt-5 mb-20" />
+                <ButtonComponent 
+                    label={loading ? "Loading..." : "Back to Activities"} 
+                    onPress={handleBackToActivities} 
+                    className="mt-5 mb-20"
+                    disabled={loading}
+                    var2
+                />
             </View>
         </ScrollView>
+
+        {/* Overlay ActivityIndicator when loading */}
+        {loading && (
+            <View
+                style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(255,255,255,0.5)", // Semi-transparent background
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 1000, // Ensure overlay is on top
+                }}
+            >
+                <ActivityIndicator size="large" color="#007BFF" /> {/* Adjust color as needed */}
+            </View>
+        )}
         </>
     );
 };

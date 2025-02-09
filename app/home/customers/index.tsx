@@ -20,9 +20,10 @@ import CustomersFilter from "@/components/customersFilter";
 import { hideCustomersFilter, showCustomersFilter } from "@/lib/store/uiSlice";
 import { router } from "expo-router";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
-import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
+import { setCurrentScanId, setCurrentCustomerId } from "@/lib/store/currentSlice";
 import { useFocusEffect } from "@react-navigation/native";
 import AddIcon from "@/components/svg/addIcon";
+
 
 interface AppwriteCustomer {
   $id: string;
@@ -421,13 +422,17 @@ const CustomerCard = ({
         };
 
         dispatch(setSelectedCustomer(customerForActivity));
-        dispatch(setCurrentScan(customer.lastScanId || null));
-        dispatch(setCurrentCustomer(customer.$id));
+        dispatch(setCurrentScanId(customer.lastScanId || null));
+        dispatch(setCurrentCustomerId(customer.$id));
+        console.log("scanId", customer.lastScanId);
+        console.log("customerId", customer.$id);
         
+
         router.push("/home/customers/customer-details");
       }}
     >
       <View className="items-center flex-row gap-3">
+
         <View className="w-9 h-9 bg-color1 rounded-full items-center justify-center">
           {customer?.profileImage ? (
             <Image
