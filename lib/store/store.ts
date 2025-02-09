@@ -10,6 +10,10 @@ import commentReducer from './commentSlice';
 import dealershipUsersReducer from './dealershipUsersSlice';
 import scanReducer from './scanSlice';
 import notificationsReducer from './notificationsSlice';
+// Adding redux-persist imports
+import { persistReducer, persistStore } from 'redux-persist';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const rootReducer = combineReducers({
   sidePane: sidePaneReducer,
   ui: uiReducer,
@@ -23,8 +27,17 @@ const rootReducer = combineReducers({
   notifications: notificationsReducer
 });
 
+// Adding redux-persist configuration
+const persistConfig = {
+  key: 'root',
+  storage: AsyncStorage,
+  // whitelist: [], // optionally specify which states to persist
+};
+
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
 const store = configureStore({
-  reducer: rootReducer,
+  reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
@@ -33,4 +46,6 @@ const store = configureStore({
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+// Export the persistor
+export const persistor = persistStore(store);
 export default store;

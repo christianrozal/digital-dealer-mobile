@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { Provider } from "react-redux";
-import store from "@/lib/store/store";
+import store, { persistor } from "@/lib/store/store";
 import * as SplashScreen from 'expo-splash-screen';
 import CustomSplash from "@/components/CustomSplash";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -9,6 +9,7 @@ import { View } from "react-native";
 import { account } from "@/lib/appwrite";
 import { router } from "expo-router";
 import "../global.css";
+import { PersistGate } from 'redux-persist/integration/react';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -58,17 +59,19 @@ export default function RootLayout() {
 
   return (
     <Provider store={store}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View className="flex-1">
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'fade',
-              animationDuration: 200,
-            }}
-          />
-        </View>
-      </GestureHandlerRootView>
+      <PersistGate persistor={persistor} loading={<CustomSplash />}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View className="flex-1">
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                animation: 'fade',
+                animationDuration: 200,
+              }}
+            />
+          </View>
+        </GestureHandlerRootView>
+      </PersistGate>
     </Provider>
   );
 }
