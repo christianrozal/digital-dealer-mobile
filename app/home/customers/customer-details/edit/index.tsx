@@ -8,7 +8,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import CameraIcon from '@/components/svg/cameraIcon';
 import { storage, databases } from '@/lib/appwrite';
-import { launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { setUserData } from '@/lib/store/userSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
 import { databaseId, customersId, projectId, bucketId } from '@/lib/appwrite';
@@ -55,7 +55,6 @@ const EditCustomerScreen = () => {
   const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
   const userData = useSelector((state: RootState) => state.user.data);
 
-
   // Find the current scan and customer data from userSlice
   const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
   const customerData = currentScan?.customers;
@@ -100,28 +99,24 @@ const EditCustomerScreen = () => {
     }));
   };
 
-  // Update customer information in database
+  // Update Customer Information without showing a success alert
+  // Instead, a success flag is dispatched to show the success animation on the customer details screen.
   const handleUpdateCustomer = async () => {
     setLoading(true);
     try {
       const appwriteCustomer = customerData as AppwriteCustomer;
 
-      // Check if customerData is valid
       if (!appwriteCustomer || !appwriteCustomer.$id) {
         Alert.alert('Error', 'No customer ID found');
         return;
       }
 
-      // Log the currentScan to check its value
       console.log('Current Scan:', currentScan);
-
-      // Check if currentScan is valid
       if (!currentScan || !currentScan.customers) {
         Alert.alert('Error', 'No current scan or customer data found');
         return;
       }
 
-      // Ensure customers is valid before accessing its properties
       const scanCustomer = currentScan.customers as AppwriteCustomer;
       if (!scanCustomer || !scanCustomer.$id) {
         Alert.alert('Error', 'No customer ID found in current scan');
@@ -130,7 +125,6 @@ const EditCustomerScreen = () => {
 
       // Update Redux state first
       const updatedScans = userData?.scans?.map((scan) => {
-        // Ensure scan.customers exists before accessing $id
         if (scan.customers && (scan.customers as AppwriteCustomer).$id === appwriteCustomer.$id) {
           return {
             ...scan,
@@ -140,14 +134,13 @@ const EditCustomerScreen = () => {
               email: formData.email,
               phone: formData.phone,
               profileImage: appwriteCustomer.profileImage,
-              profileImageId: appwriteCustomer.profileImageId
+              profileImageId: appwriteCustomer.profileImageId,
             }
           };
         }
         return scan;
       }) || [];
 
-      // Update Redux store first
       if (userData) {
         dispatch(setUserData({
           ...userData,
@@ -155,7 +148,7 @@ const EditCustomerScreen = () => {
         }));
       }
 
-      // Then update database
+      // Update database
       await databases.updateDocument(
         databaseId,
         customersId,
@@ -165,24 +158,122 @@ const EditCustomerScreen = () => {
           email: formData.email,
           phone: formData.phone,
           profileImage: appwriteCustomer.profileImage,
-          profileImageId: appwriteCustomer.profileImageId
+          profileImageId: appwriteCustomer.profileImageId,
         }
       );
-
-      Alert.alert('Success', 'Customer profile updated successfully!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            router.replace("/home/customers/customer-details");
-          }
-        }
-      ]);
+      
+      // Dispatch the success flag so that the customer details screen can show the success animation.
+      dispatch(setCustomerUpdateSuccess(true));
+      
+      // Directly navigate to customer details
+      router.replace("/home/customers/customer-details");
 
     } catch (error) {
       console.error('Error updating customer:', error);
       Alert.alert('Error', 'Failed to update customer profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Upload and update profile image without a Success Alert,
+  // and dispatch the success flag for the success animation on the customer details screen.
+  const handleImageUpload = async () => {
+    try {
+      // Request permissions to access the media library
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Permission to access media library is required!');
+        return;
+      }
+
+      // Launch the image library using expo-image-picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled) return;
+
+      if (result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const uri = asset.uri;
+        const fileName = uri.split('/').pop() || 'profile.jpg';
+        const fileType = 'image/jpeg';
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const appwriteCustomer = customerData as AppwriteCustomer;
+
+        // Delete previous image if it exists
+        if (appwriteCustomer.profileImageId) {
+          try {
+            await storage.deleteFile(bucketId, appwriteCustomer.profileImageId);
+          } catch (error) {
+            console.log('No previous image to delete or error deleting:', error);
+          }
+        }
+
+        const fileData = {
+          name: fileName,
+          type: fileType,
+          size: blob.size,
+          uri: uri,
+        };
+
+        // Upload the new image
+        const uploadResponse = await storage.createFile(
+          bucketId,
+          ID.unique(),
+          fileData
+        );
+
+        const previewUrl = storage.getFilePreview(
+          bucketId,
+          uploadResponse.$id,
+          500,
+          500
+        );
+
+        // Update Redux state for the customer image
+        const updatedScans = userData?.scans?.map((scan) => {
+          const scanCustomer = scan?.customers as AppwriteCustomer;
+          if (scanCustomer?.$id === appwriteCustomer.$id) {
+            return {
+              ...scan,
+              customers: {
+                ...scanCustomer,
+                profileImage: previewUrl.toString(),
+                profileImageId: uploadResponse.$id,
+              },
+            };
+          }
+          return scan;
+        }) || [];
+
+        dispatch(setUserData({
+          ...userData,
+          scans: updatedScans,
+        }));
+        dispatch(setCustomerUpdateSuccess(true));
+
+        // Update the customer document in the database
+        await databases.updateDocument(
+          databaseId,
+          customersId,
+          appwriteCustomer.$id,
+          {
+            profileImage: previewUrl.toString(),
+            profileImageId: uploadResponse.$id,
+          }
+        );
+
+        // Directly navigate to customer details without showing a success alert
+        router.replace("/home/customers/customer-details");
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      Alert.alert('Error', 'Failed to upload image');
     }
   };
 
@@ -199,101 +290,6 @@ const EditCustomerScreen = () => {
     }
     
     return `${firstName[0].toUpperCase()}${firstName[1]?.toUpperCase() || 'U'}`;
-  };
-
-  const handleImageUpload = async () => {
-    try {
-      const result = await launchImageLibrary({
-        mediaType: 'photo',
-        quality: 0.8,
-      });
-
-      if (result.didCancel) return;
-
-      if (result.assets && result.assets[0].uri) {
-        const uri = result.assets[0].uri;
-        const fileName = uri.split('/').pop();
-        const fileType = result.assets[0].type || 'image/jpeg';
-
-        const appwriteCustomer = customerData as AppwriteCustomer;
-
-        // Convert image to blob
-        const response = await fetch(uri);
-        const blob = await response.blob();
-
-        // Delete old profile image if it exists
-        if (appwriteCustomer.profileImageId) {
-          try {
-            await storage.deleteFile(bucketId, appwriteCustomer.profileImageId);
-          } catch (error) {
-            console.log('No previous image to delete or error deleting:', error);
-          }
-        }
-
-        // Create an object that matches the expected type
-        const fileData = {
-          name: fileName || 'profile.jpg',
-          type: fileType,
-          size: blob.size,
-          uri: uri // Use uri or another appropriate value for uri
-        };
-
-        // Upload new image
-        const uploadResponse = await storage.createFile(
-          bucketId,
-          ID.unique(),
-          fileData
-        );
-
-        // Get preview URL
-        const previewUrl = storage.getFilePreview(
-          bucketId,
-          uploadResponse.$id,
-          500,
-          500
-        );
-
-        // Update Redux state first
-        const updatedScans = userData?.scans?.map((scan) => {
-          const scanCustomer = scan?.customers as AppwriteCustomer;
-          if (scanCustomer?.$id === appwriteCustomer.$id) {
-            return {
-              ...scan,
-              customers: {
-                ...scanCustomer,
-                profileImage: previewUrl.toString(),
-                profileImageId: uploadResponse.$id
-              }
-            };
-          }
-          return scan;
-        }) || [];
-
-        // Update Redux first
-        dispatch(setUserData({
-          ...userData,
-          scans: updatedScans
-        }));
-        dispatch(setCustomerUpdateSuccess(true));
-
-        // Then update database
-        await databases.updateDocument(
-          databaseId,
-          customersId,
-          appwriteCustomer.$id,
-          {
-            profileImage: previewUrl.toString(),
-            profileImageId: uploadResponse.$id
-          }
-        );
-
-        Alert.alert('Success', 'Profile image updated successfully!');
-        router.replace("/home/customers/customer-details");
-      }
-    } catch (error) {
-      console.error('Image upload error:', error);
-      Alert.alert('Error', 'Failed to upload image');
-    }
   };
 
   const renderProfileImage = () => {
@@ -329,7 +325,7 @@ const EditCustomerScreen = () => {
           <View style={{ width: 18 }} />
         </View>
 
-        <View className=' px-4'>
+        <View className='px-4'>
           <Text className="text-2xl font-semibold mt-10">Edit Customer Profile</Text>
           <TouchableOpacity className='mt-10 mx-auto' onPress={handleImageUpload}>
             <View
