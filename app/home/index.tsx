@@ -502,9 +502,9 @@ const HomeScreen = () => {
             </View>
           </View>
         </Modal>
-        <View className="mb-40">
+        {/* <View className="mb-40">
           <ButtonComponent label="Test" onPress={() => router.push("/test")} />
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );

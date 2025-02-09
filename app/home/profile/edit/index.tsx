@@ -7,23 +7,20 @@ import { router } from 'expo-router';
 import ButtonComponent from '@/components/button';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store/store';
+import * as ImagePicker from 'expo-image-picker';
 import CameraIcon from '@/components/svg/cameraIcon';
-import { Client, ID } from 'react-native-appwrite';
-import * as ImagePicker from 'react-native-image-picker';
+import { ID } from 'react-native-appwrite';
 import { setUserData } from '@/lib/store/userSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
-import { client, databases, storage, databaseId, usersId, bucketId } from '@/lib/appwrite';
-
+import { databases, storage, databaseId, usersId, bucketId } from '@/lib/appwrite';
 
 const EditProfileScreen = () => {
     const userData = useSelector((state: RootState) => state.user.data);
     const dispatch = useDispatch();
-    const [profileImage, setProfileImage] = useState<string | null>(null);
     const [formData, setFormData] = useState({
-        name: userData?.name || '',
-        position: userData?.position || '',
-        phone: userData?.phone || ''
+        name: userData?.name || ''
     });
+    const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleInputChange = (field: string, value: string) => {
@@ -41,18 +38,22 @@ const EditProfileScreen = () => {
                 return;
             }
 
-            const updatedDocument = await databases.updateDocument(
+            const payload = {
+                name: String(formData.name),
+                profileImage: userData?.profileImage || "",
+                profileImageId: userData?.profileImageId || ""
+            };
+
+            await databases.updateDocument(
                 databaseId,
                 usersId,
                 userData.$id,
-                formData
+                {
+                    name: "fdasfasf"
+                }
             );
 
-            dispatch(setUserData({
-                ...userData,
-                ...formData
-            }));
-
+            dispatch(setUserData({ ...userData, ...payload }));
             dispatch(setCustomerUpdateSuccess(true));
             router.push("/home/profile");
 
@@ -67,11 +68,9 @@ const EditProfileScreen = () => {
 
     const getInitials = (name: string | undefined): string => {
         if (!name) return "Us";
-        const firstName = name.trim().split(" ")[0] || "";
-        if (!firstName) return "Us"
-        const firstLetter = firstName[0]?.toUpperCase() || "";
-        const secondLetter = firstName[1]?.toLowerCase() || "";
-        return `${firstLetter}${secondLetter}`;
+        const parts = name.trim().split(" ");
+        const initials = parts.map(part => part[0]).join("");
+        return initials.toUpperCase().slice(0, 2);
     };
 
     const handleImageUpload = async () => {
@@ -81,77 +80,80 @@ const EditProfileScreen = () => {
                 return;
             }
 
-            const result = await ImagePicker.launchImageLibrary({
-                mediaType: 'photo',
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission required', 'Permission to access media library is required!');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false,
                 quality: 0.8,
             });
 
-            if (result.didCancel) return;
+            if (result.canceled) return;
 
-            if (result.assets && result.assets[0].uri) {
-                const uri = result.assets[0].uri;
-                const fileName = uri.split('/').pop();
-                const fileType = result.assets[0].type || 'image/jpeg';
-
-                // Convert image to blob
+            if (result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                const uri = asset.uri;
+                const fileName = uri.split('/').pop() || 'profile.jpg';
+                const fileType = 'image/jpeg';
                 const response = await fetch(uri);
                 const blob = await response.blob();
 
-                // Delete previous image if exists - with error handling
                 if (userData?.profileImageId) {
                     try {
                         await storage.deleteFile(bucketId, userData.profileImageId);
                     } catch (deleteError) {
-                        console.log('Previous image not found, proceeding anyway:', deleteError);
+                        console.log('Error deleting previous image:', deleteError);
                     }
                 }
 
-                // Upload new image
-                const file = new File([blob], fileName || 'profile.jpg', { type: fileType });
+                const fileData = {
+                    name: fileName,
+                    type: fileType,
+                    size: blob.size,
+                    uri: uri,
+                };
+
                 const uploadResponse = await storage.createFile(
                     bucketId,
                     ID.unique(),
-                    file
+                    fileData
                 );
 
-                // Get preview URL
                 const previewUrl = storage.getFilePreview(
                     bucketId,
                     uploadResponse.$id,
                     500,
                     500
                 );
-                setProfileImage(previewUrl.toString());
 
-                // Update Redux state first
-                const newUserData = {
+                setLocalProfileImage(previewUrl.toString());
+
+                const newImage = previewUrl.toString();
+                const newImageId = uploadResponse.$id;
+                const updatedUserData = {
                     ...userData,
-                    profileImage: previewUrl.toString(),
-                    profileImageId: uploadResponse.$id
+                    profileImage: newImage,
+                    profileImageId: newImageId
                 };
-                
-                dispatch(setUserData(newUserData));
+
+                dispatch(setUserData(updatedUserData));
                 dispatch(setCustomerUpdateSuccess(true));
 
-                // Then update the database
                 await databases.updateDocument(
                     databaseId,
                     usersId,
                     userData.$id,
                     {
-                        profileImage: previewUrl.toString(),
-                        profileImageId: uploadResponse.$id
+                        profileImage: newImage,
+                        profileImageId: newImageId
                     }
                 );
 
-                Alert.alert('Success', 'Profile image updated successfully!', [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            router.replace("/home/profile");
-                        }
-                    }
-                ]);
+                router.replace("/home/profile");
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to upload image');
@@ -180,9 +182,9 @@ const EditProfileScreen = () => {
                             className="bg-color1 rounded-full flex items-center justify-center"
                             style={{ width: 100, height: 100 }}
                         >
-                            {(profileImage || userData?.profileImage) ? (
+                            {(localProfileImage || userData?.profileImage) ? (
                                 <Image
-                                    source={{ uri: profileImage || userData?.profileImage || '' }}
+                                    source={{ uri: localProfileImage || userData?.profileImage || '' }}
                                     style={{ width: 100, height: 100, borderRadius: 50 }}
                                 />
                             ) : (
@@ -201,19 +203,6 @@ const EditProfileScreen = () => {
                             placeholder="Full Name"
                             value={formData.name}
                             onChangeText={(text) => handleInputChange('name', text)}
-                        />
-                        <TextInput
-                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                            placeholder="Position"
-                            value={formData.position}
-                            onChangeText={(text) => handleInputChange('position', text)}
-                        />
-                        <TextInput
-                            className="py-3 px-3 flex-row bg-color3 items-center gap-3 rounded-md text-gray-500 text-sm focus:outline-color1"
-                            placeholder="Phone Number"
-                            value={formData.phone}
-                            onChangeText={(text) => handleInputChange('phone', text)}
-                            keyboardType="phone-pad"
                         />
                     </View>
                 </View>

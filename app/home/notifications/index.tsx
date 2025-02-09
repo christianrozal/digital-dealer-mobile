@@ -19,40 +19,12 @@ interface Notification extends Models.Document {
 }
 
 const NotificationSkeleton = () => {
-  const fadeAnim = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
   const renderSkeletonItem = () => (
-    <View className="p-3 bg-white mt-3 rounded-md flex-row gap-3 items-center">
-      <Animated.View 
-        className="w-9 h-9 bg-gray-200 rounded-full"
-        style={{ opacity: fadeAnim }}
-      />
+    <View className="p-3 bg-white mt-3 rounded-md flex-row gap-3 items-center animate-pulse">
+      <View className="w-9 h-9 bg-color3 rounded-full" />
       <View className="flex-1 gap-2">
-        <Animated.View 
-          className="h-4 bg-gray-200 rounded w-full"
-          style={{ opacity: fadeAnim }}
-        />
-        <Animated.View 
-          className="h-3 bg-gray-200 rounded w-3/4"
-          style={{ opacity: fadeAnim }}
-        />
+        <View className="h-4 bg-color3 rounded w-full" />
+        <View className="h-3 bg-color3 rounded w-3/4" />
       </View>
     </View>
   );
@@ -60,10 +32,7 @@ const NotificationSkeleton = () => {
   return (
     <View>
       <View>
-        <Animated.View 
-          className="h-6 bg-gray-200 rounded w-16 mb-2"
-          style={{ opacity: fadeAnim }}
-        />
+        <View className="h-6 bg-color3 rounded w-16 mb-2 animate-pulse" />
         {[1, 2, 3].map((_, index) => (
           <React.Fragment key={index}>
             {renderSkeletonItem()}
@@ -72,10 +41,7 @@ const NotificationSkeleton = () => {
       </View>
       
       <View className="mt-6">
-        <Animated.View 
-          className="h-6 bg-gray-200 rounded w-16 mb-2"
-          style={{ opacity: fadeAnim }}
-        />
+        <View className="h-6 bg-color3 rounded w-16 mb-2 animate-pulse" />
         {[1, 2].map((_, index) => (
           <React.Fragment key={index}>
             {renderSkeletonItem()}
@@ -102,10 +68,11 @@ const NotificationsScreen = () => {
         databaseId,
         notificationsId,
         [
-          Query.equal('priorUsers', userData?.$id || ''),
+          Query.equal('users', userData?.$id || ''),
           Query.orderDesc('$createdAt'),
           Query.limit(50)
         ]
+
       );
 
       setNotifications(response.documents);
