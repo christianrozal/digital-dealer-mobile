@@ -30,18 +30,18 @@
       "favicon": "./assets/images/alexium-logo.png"
     },
     "splash": {
-      "image": "./assets/images/alexium-logo.png",
-      "resizeMode": "contain",
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
+
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/alexium-logo.png",
-          "imageWidth": 250,
-          "resizeMode": "contain",
+          "image": "./assets/images/splash.png",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff"
         }
       ],
