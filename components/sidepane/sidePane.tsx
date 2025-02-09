@@ -149,7 +149,7 @@ const SidePaneComponent = ({
             await account.deleteSession("current");
             router.replace("/login");
         } catch (error) {
-            console.log("Logout Error:", error);
+            // Logs removed for production
         }
     };
 
@@ -196,10 +196,7 @@ const SidePaneComponent = ({
         
         setIsSwitching(true);
         try {
-            console.log('Starting dealership switch:', { 
-                dealership: selectedDealership, 
-                rooftop: selectedRooftop 
-            });
+            // Logs removed for production
             
             // 1. Fetch fresh user data
             const session = await account.get();
@@ -211,7 +208,7 @@ const SidePaneComponent = ({
 
             if (response.documents.length > 0) {
                 const freshUserData = response.documents[0] as UserData;
-                console.log('Fetched fresh user data');
+                // Logs removed for production
 
                 // 2. Update current states first
                 const level1Id = freshUserData.dealershipLevel1?.[0]?.$id;
@@ -237,10 +234,7 @@ const SidePaneComponent = ({
                         availableRooftops.some(rooftop => scan.dealershipLevel3?.$id === rooftop.$id)
                     )) || [];
 
-                console.log('Filtered scans:', {
-                    total: freshUserData.scans?.length || 0,
-                    filtered: filteredScans.length
-                });
+                // Logs removed for production
 
                 // 4. Update Redux with filtered scans
                 dispatch(setUserData({
@@ -248,11 +242,11 @@ const SidePaneComponent = ({
                     scans: filteredScans
                 }));
 
-                console.log('Successfully switched dealership');
+                // Logs removed for production
                 handleClose();
             }
         } catch (error) {
-            console.error('Error switching dealership:', error);
+            // Logs removed for production
         } finally {
             setIsSwitching(false);
         }

@@ -43,8 +43,8 @@ const SelectedCustomerScreen = () => {
   const customerUpdateSuccess = useSelector((state: RootState) => state.ui.customerUpdateSuccess);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
-  const currentScanId = useSelector((state: RootState) => state.current.currentScan);
+  const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomerId);
+  const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
   const userData = useSelector((state: RootState) => state.user.data);
 
   // Find the current scan and customer data from userSlice

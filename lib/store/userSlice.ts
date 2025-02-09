@@ -21,13 +21,7 @@ interface DealershipLevel3 {
 interface Scan {
     $id: string;
     $createdAt: string;
-    users: string | { $id: string; name?: string; profileImage?: string; [key: string]: any };
-    user?: {
-        $id: string;
-        name: string;
-        profileImage?: string;
-        [key: string]: any;
-    };
+    users?: string | { $id: string; name?: string; profileImage?: string; [key: string]: any };
     customers?: {
         $id: string;
         name?: string;
@@ -41,6 +35,9 @@ interface Scan {
     interestedIn?: string;
     followUpDate?: string;
     scanCount?: number;
+    dealershipLevel1?: { $id: string };
+    dealershipLevel2?: { $id: string };
+    dealershipLevel3?: { $id: string };
 }
 
 interface UserState {
@@ -56,9 +53,9 @@ interface UserState {
         dealershipLevel1?: DealershipLevel1[];
         dealershipLevel2?: DealershipLevel2[];
         dealershipLevel3?: DealershipLevel3[];
-        scans?: Scan[];
         slug?: string;
         customers?: string[];
+        scans?: Scan[];  
     } | null;
     loading: boolean;
     error: string | null;
@@ -79,6 +76,20 @@ const userSlice = createSlice({
             state.loading = false;
             state.error = null;
         },
+        addUserScan: (state, action: PayloadAction<Scan>) => {
+            if (state.data) {
+                state.data.scans = [...(state.data.scans || []), action.payload];
+            }
+        },
+        updateUserScan: (state, action: PayloadAction<{ id: string; data: Partial<Scan> }>) => {
+            if (state.data?.scans) {
+                state.data.scans = state.data.scans.map(scan => 
+                  scan.$id === action.payload.id 
+                    ? { ...scan, ...action.payload.data }
+                    : scan
+                );
+            }
+        },
         setLoading: (state, action: PayloadAction<boolean>) => {
             state.loading = action.payload;
         },
@@ -94,5 +105,5 @@ const userSlice = createSlice({
     }
 });
 
-export const { setUserData, setLoading, setError, clearUser } = userSlice.actions;
+export const { setUserData, setLoading, setError, clearUser, addUserScan, updateUserScan } = userSlice.actions;
 export default userSlice.reducer;

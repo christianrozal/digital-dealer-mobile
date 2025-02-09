@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/lib/store/store";
 import { showActivitiesFilter, hideActivitiesFilter } from "@/lib/store/uiSlice";
 import { router } from "expo-router";
-import { setCurrentScan, setCurrentCustomer } from '@/lib/store/currentSlice';
+import { setCurrentScanId, setCurrentCustomerId } from '@/lib/store/currentSlice';
 import ActivitiesFilter from "@/components/activitiesFilter";
 import { databases, databaseId, usersId, account } from "@/lib/appwrite";
 import { Query } from "appwrite";
@@ -33,13 +33,28 @@ interface DealershipLevel3 {
 interface Scan {
   $id: string;
   $createdAt: string;
-  dealershipLevel2?: { $id: string };
-  dealershipLevel3?: { $id: string };
-  customers?: any;
+  users: string | { $id: string; name?: string; profileImage?: string; [key: string]: any };
+  user?: {
+      $id: string;
+      name: string;
+      profileImage?: string;
+      [key: string]: any;
+  };
+  customers?: {
+      $id: string;
+      name?: string;
+      phone?: string;
+      email?: string;
+      profileImage?: string;
+      interestStatus?: string;
+      interestedIn?: string;
+  };
   interestStatus?: string;
   interestedIn?: string;
   followUpDate?: string;
   scanCount?: number;
+  dealershipLevel2?: { $id: string };
+  dealershipLevel3?: { $id: string };
 }
 
 interface UserData {
@@ -61,8 +76,8 @@ const HomeScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const userData = useSelector((state: RootState) => state.user.data) as UserData;
-  const currentDealershipLevel2Id = useSelector((state: RootState) => state.current.currentDealershipLevel2);
-  const currentDealershipLevel3Id = useSelector((state: RootState) => state.current.currentDealershipLevel3);
+  const currentDealershipLevel2Id = useSelector((state: RootState) => state.current.currentDealershipLevel2Id);
+  const currentDealershipLevel3Id = useSelector((state: RootState) => state.current.currentDealershipLevel3Id);
   const {
     isActivitiesFilterVisible,
     activitiesSelectedInterestedIns,
@@ -365,8 +380,8 @@ const HomeScreen = () => {
                     }
                   });
 
-                  dispatch(setCurrentScan(latestScan?.$id || scan.$id));
-                  dispatch(setCurrentCustomer(scan.customers?.$id));
+                  dispatch(setCurrentScanId(latestScan?.$id || scan.$id));
+                  dispatch(setCurrentCustomerId(scan.customers?.$id || null));
                   
                   router.push("/home/customers/customer-details");
                 }}
@@ -382,7 +397,7 @@ const HomeScreen = () => {
                           />
                         ) : (
                           <Text className="text-white font-bold text-xs">
-                            {getInitials(scan.customers?.name)}
+                            {getInitials(scan.customers?.name || '')}
                           </Text>
                         )}
                       </View>

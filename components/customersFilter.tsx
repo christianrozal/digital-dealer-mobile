@@ -56,14 +56,6 @@ const CustomersFilter = () => {
     return count;
   }, [customersSelectedInterestedIns, customersSelectedInterestStatuses, customersSortBy, customersFromDate, customersToDate]);
 
-  // Console logs to check Redux state values
-  console.log("CustomersFilter - useSelector values:");
-  console.log("customersSelectedInterestedIns:", customersSelectedInterestedIns);
-  console.log("customersSelectedInterestStatuses:", customersSelectedInterestStatuses);
-  console.log("customersSortBy:", customersSortBy);
-  console.log("customersFromDate:", customersFromDate ? dayjs(customersFromDate).format("YYYY-MM-DD") : customersFromDate);
-  console.log("customersToDate:", customersToDate ? dayjs(customersToDate).format("YYYY-MM-DD") : customersToDate);
-
   const INTEREST_OPTIONS = [
     { value: "Buying", label: "Buying" },
     { value: "Selling", label: "Selling" },

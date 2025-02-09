@@ -11,8 +11,6 @@ import Calendar2Icon from "@/components/svg/calendar2";
 import { useFocusEffect } from "@react-navigation/native";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ButtonComponent from "@/components/button";
-import { setUserData } from "@/lib/store/userSlice";
-import { setCurrentCustomer } from "@/lib/store/currentSlice";
 import { databases, databaseId, commentsId, scansId, usersId, notificationsId } from "@/lib/appwrite";
 import { Query, ID } from "react-native-appwrite";
 import DotsIcon from "@/components/svg/dotsIcon";
@@ -20,14 +18,9 @@ import DeleteIcon from "@/components/svg/deleteIcon";
 import EditIcon2 from "@/components/svg/editIcon2";
 import relativeTime from "dayjs/plugin/relativeTime";
 import CalendarModal from "@/components/calendarModal";
+import { addComment } from "@/lib/store/commentSlice";
 
 dayjs.extend(relativeTime);
-
-interface User {
-  $id: string;
-  name: string;
-  [key: string]: any;
-}
 
 interface Scan {
   $id: string;
@@ -59,22 +52,6 @@ interface CustomerData {
   [key: string]: any;
 }
 
-interface Customer {
-  $id: string;
-  name?: string;
-  phone?: string;
-  email?: string;
-  profileImage?: string;
-  interestStatus?: string;
-  interestedIn?: string;
-  scans?: Scan[];
-}
-
-interface UserData {
-    $id: string;
-    scans?: Scan[];
-}
-
 interface Comment {
   $id: string;
   $createdAt: string;
@@ -96,143 +73,45 @@ interface AssignmentHistory {
 }
 
 const CustomerLogScreen = () => {
-    const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomer);
-    const currentScanId = useSelector((state: RootState) => state.current.currentScan);
+    const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomerId);
+    const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
     const userData = useSelector((state: RootState) => state.user.data);
-
-    console.log("Customer Log Initial Data:", {
-        currentCustomerId,
-        currentScanId,
-        userScans: userData?.scans?.map(scan => ({
-            scanId: scan.$id,
-            customerId: scan.customers?.$id,
-            userId: typeof scan.users === 'string' ? scan.users : scan.users?.$id
-        }))
-    });
+    const scanData = useSelector((state: RootState) => state.scan.data);
+    const commentData = useSelector((state: RootState) => state.comment.data);
 
     // Find the current scan and customer data from userSlice
-    const currentScan = userData?.scans?.find(scan => {
-        const scanId = scan.$id;
-        const matches = scanId === currentScanId;
-        console.log("Comparing scan:", {
-            scanId,
-            currentScanId,
-            matches,
-            scanData: scan
-        });
-        return matches;
-    });
-
-    // Get customer data directly from the scan
+    const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
     const customerData = currentScan?.customers;
 
-    // Log detailed data for debugging
-    useEffect(() => {
-        console.log('CustomerLogScreen - Full Data:', {
-            currentCustomerId,
-            currentScanId,
-            userDataExists: !!userData,
-            scansCount: userData?.scans?.length,
-            currentScan: currentScan ? {
-                id: currentScan.$id,
-                customerId: currentScan.customers?.$id,
-                customerData: currentScan.customers,
-                fullScan: currentScan
-            } : null,
-            finalCustomerData: customerData,
-            allScans: userData?.scans?.map(scan => ({
-                id: scan.$id,
-                customerId: scan.customers?.$id,
-                scanUsers: typeof scan.users === 'string' ? scan.users : scan.users?.$id
+    // Get filtered comments
+    const [comments, setComments] = useState<Comment[]>(() => 
+        commentData?.filter(comment => 
+            comment.customers === currentCustomerId
+        ) || []
+    );
+
+    // Assignment history from scan data
+    const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistory[]>(() => {
+        if (!scanData?.data) return [];
+        
+        // Filter scans by current customer ID
+        const customerScans = scanData.data.filter(scan => 
+            typeof scan.customers === 'string' 
+                ? scan.customers === currentCustomerId
+                : scan.customers?.$id === currentCustomerId
+        );
+
+        // Map to assignment history format, using the users data
+        return customerScans
+            .map(scan => ({
+                date: scan.$createdAt,
+                userId: typeof scan.users === 'string' ? scan.users : scan.users?.$id || '',
+                userName: typeof scan.users === 'string' ? '' : scan.users?.name || '',
+                profileImage: typeof scan.users === 'string' ? undefined : scan.users?.profileImage
             }))
-        });
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
 
-        // If we don't have currentCustomerId but we have customerData, update it
-        if (!currentCustomerId && customerData?.$id) {
-            dispatch(setCurrentCustomer(String(customerData.$id)));
-        }
-    }, [currentCustomerId, currentScanId, currentScan, customerData]);
-
-    // Fetch both comments and assignment history when component loads
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!currentCustomerId) {
-                console.log("No customer ID available for fetching data");
-                return;
-            }
-
-            setIsLoadingThread(true);
-            setIsLoadingHistory(true);
-
-            try {
-                // Fetch comments
-                console.log("Fetching comments for customer:", currentCustomerId);
-                const commentsResponse = await databases.listDocuments(
-                    databaseId,
-                    commentsId,
-                    [
-                        Query.equal('customers', currentCustomerId),
-                        Query.orderDesc('$createdAt')
-                    ]
-                );
-                console.log("Fetched customer comments:", commentsResponse.documents);
-                setComments(commentsResponse.documents as unknown as Comment[]);
-
-                // Fetch assignment history
-                console.log('Fetching assignment history for customer:', currentCustomerId);
-                const scansResponse = await databases.listDocuments(
-                    databaseId,
-                    scansId,
-                    [
-                        Query.equal('customers', currentCustomerId),
-                        Query.orderDesc('$createdAt')
-                    ]
-                );
-
-                // Process assignments chronologically from oldest to newest
-                const assignments: AssignmentHistory[] = [];
-                let lastAssignedUserId: string | null = null;
-
-                // Reverse the array to process from oldest to newest
-                const orderedScans = [...scansResponse.documents].reverse();
-
-                for (let i = 0; i < orderedScans.length; i++) {
-                    const scan = orderedScans[i];
-                    const userId = typeof scan.users === 'string' ? scan.users : scan.users?.$id;
-                    
-                    // Add to history if:
-                    // 1. This is the first scan (i === 0), or
-                    // 2. The user is different from the last assigned user
-                    if (userId && (i === 0 || userId !== lastAssignedUserId)) {
-                        assignments.push({
-                            date: scan.$createdAt,
-                            userId: userId,
-                            userName: scan.users?.name || 'Unknown User',
-                            profileImage: scan.users?.profileImage
-                        });
-                        lastAssignedUserId = userId;
-                    }
-                }
-
-                // Sort by date in descending order (newest first)
-                assignments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                console.log('Final assignment history:', assignments);
-                setAssignmentHistory(assignments);
-
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                Alert.alert("Error", "Failed to fetch data");
-            } finally {
-                setIsLoadingThread(false);
-                setIsLoadingHistory(false);
-            }
-        };
-
-        fetchData();
-    }, [currentCustomerId]);
-
-    const [comments, setComments] = useState<Comment[]>([]);
     const [comment, setComment] = useState('');
     const [value, setValue] = useState<string | null>(null);
     const [interestedIn, setInterestedIn] = useState<string[]>([]);
@@ -247,22 +126,11 @@ const CustomerLogScreen = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingThread, setIsLoadingThread] = useState(false);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-    const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistory[]>([]);
     const [isCalendarModalVisible, setIsCalendarModalVisible] = useState(false);
     const [selectedTime, setSelectedTime] = useState<string>();
     const [localFollowUpDate, setLocalFollowUpDate] = useState<string | undefined>(
         currentScan?.followUpDate
     );
-
-    useEffect(() => {
-        console.log('Debug Data:', {
-            currentScanId,
-            currentCustomerId,
-            userData,
-            currentScan,
-            customerData
-        });
-    }, [currentScanId, currentCustomerId, userData, currentScan, customerData]);
 
     useFocusEffect(
         useCallback(() => {
@@ -275,28 +143,10 @@ const CustomerLogScreen = () => {
             setValue(currentScan.interestStatus || null);
             setInterestedIn(currentScan.interestedIn ? [currentScan.interestedIn] : []);
             setLocalFollowUpDate(currentScan.followUpDate);
-
-            console.log('Customer Log Screen Data:', {
-                currentScanId,
-                currentCustomerId,
-                scan: {
-                    id: currentScan.$id,
-                    interestStatus: currentScan.interestStatus,
-                    interestedIn: currentScan.interestedIn,
-                    customer: currentScan.customers
-                }
-            });
         }
     }, [currentScan, currentScanId, currentCustomerId]);
 
-    // Add debugging for tab changes
-    useEffect(() => {
-        console.log("Active tab changed to:", activeTab);
-        console.log("Current comments:", comments);
-    }, [activeTab, comments]);
-
     const handleTabChange = (tab: 'comments' | 'thread' | 'history') => {
-        console.log("Switching to tab:", tab);
         setActiveTab(tab);
     };
 
@@ -353,7 +203,7 @@ const CustomerLogScreen = () => {
         setIsUpdating(true);
 
         try {
-            // Update scan
+            // Update scan document
             const updateData = {
                 interestStatus: value,
                 interestedIn: interestedIn[0] || null,
@@ -368,15 +218,18 @@ const CustomerLogScreen = () => {
                 updateData
             );
 
-            // Get the full updated scan data
-            const updatedScanData = await databases.getDocument(
-                databaseId,
-                scansId,
-                currentScanId
-            );
+            // Update Redux scan state
+            if (userData?.scans) {
+                userData.scans.forEach(scan => {
+                    if (scan.$id === currentScanId) {
+                        dispatch(updateScan({ id: scan.$id, data: updateData }));
+                    }
+                });
+            }
 
-            // Create comment if there's text
-            if (comment.trim() && currentCustomerId && userData?.$id) {
+            // Update comments if needed
+            if (comment.trim()) {
+                // Create comment and update comment state
                 const newComment = await databases.createDocument(
                     databaseId,
                     commentsId,
@@ -384,49 +237,26 @@ const CustomerLogScreen = () => {
                     {
                         comment: comment.trim(),
                         customers: currentCustomerId,
-                        users: userData.$id,
+                        users: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id,
                     }
                 );
 
-                // Clear comment input
-                setComment('');
+                // Transform the Appwrite document into the expected Comment shape
+                const transformedComment: Comment = {
+                    $id: newComment.$id,
+                    $createdAt: newComment.$createdAt,
+                    comment: newComment.comment,
+                    customers: newComment.customers,
+                    users: {
+                        $id: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id || '',
+                        name: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.name || '',
+                        email: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.email || '', 
+                        profileImage: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.profileImage
+                    }
+                };
                 
-                // Fetch updated comments
-                const commentsResponse = await databases.listDocuments(
-                    databaseId,
-                    commentsId,
-                    [
-                        Query.equal('customers', currentCustomerId),
-                        Query.orderDesc('$createdAt')
-                    ]
-                );
-                setComments(commentsResponse.documents as unknown as Comment[]);
-                
-                // Switch to thread tab after adding comment
-                setActiveTab('thread');
+                dispatch(addComment(transformedComment));
             }
-
-            // Update userData in Redux
-            if (userData && userData.scans) {
-                const updatedScans = userData.scans.map(scan =>
-                    scan.$id === currentScanId 
-                        ? {
-                            ...scan,
-                            ...updatedScanData,
-                            customers: scan.customers, // Preserve existing customer data
-                            users: scan.users, // Preserve existing users data
-                            user: scan.user // Preserve existing user data
-                        }
-                        : scan
-                );
-
-                dispatch(setUserData({ 
-                    ...userData, 
-                    scans: updatedScans 
-                }));
-            }
-
-            Alert.alert("Success", "Customer log updated successfully");
 
         } catch (error) {
             console.error('Error updating scan:', error);
@@ -1014,7 +844,7 @@ const CustomerLogScreen = () => {
                                                         </View>
                                                     </View>
                                                     {/* Only show dots menu for user's own comments */}
-                                                    {comment.users?.$id === userData?.$id && (
+                                                    {comment.users?.$id === userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id && (
                                                         <TouchableOpacity 
                                                             onPress={() => handleCommentOptions(comment.$id)}
                                                         >
@@ -1028,7 +858,7 @@ const CustomerLogScreen = () => {
                                                 </View>
                                                 <View>
                                                     {/* Only allow editing for user's own comments */}
-                                                    {editingCommentId === comment.$id && comment.users?.$id === userData?.$id ? (
+                                                    {editingCommentId === comment.$id && comment.users?.$id === userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id ? (
                                                         <View className="mt-2">
                                                             <TextInput
                                                                 value={editedComment}
@@ -1067,7 +897,7 @@ const CustomerLogScreen = () => {
                                                 </View>
                                             </View>
                                             {/* Only show options menu for user's own comments */}
-                                            {showOptions === comment.$id && comment.users?.$id === userData?.$id && (
+                                            {showOptions === comment.$id && comment.users?.$id === userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id && (
                                                 <>
                                                     <TouchableOpacity 
                                                         style={{

@@ -12,9 +12,10 @@ import Checkbox from "@/components/rnr/checkbox";
 import TextInput from "@/components/rnr/textInput";
 import { Client, Account } from "react-native-appwrite";
 import { setUserData } from '@/lib/store/userSlice';
-import { databases, databaseId, usersId } from '@/lib/appwrite';
+import { databases, databaseId, usersId, scansId } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { useDispatch } from 'react-redux';
+import { setCurrentUserId } from '@/lib/store/currentSlice';  
 
 // Initialize Appwrite client
 const client = new Client()
@@ -112,7 +113,11 @@ const LoginScreen = () => {
       );
 
       if (response.documents.length > 0) {
-        dispatch(setUserData(response.documents[0]));
+        const userData = response.documents[0];
+        dispatch(setUserData(userData));
+        dispatch(setCurrentUserId(userData.$id));
+        console.log("Current user ID:", userData?.$id);
+        console.log("Current user data:", userData);
       }
 
       // If we get here, user has an allowed role
@@ -140,7 +145,9 @@ const LoginScreen = () => {
           );
 
           if (response.documents.length > 0) {
-            dispatch(setUserData(response.documents[0]));
+            const userData = response.documents[0];
+            dispatch(setUserData(userData));
+            dispatch(setCurrentUserId(userData.$id));
           }
 
           router.replace("/dealerships");

@@ -1,19 +1,16 @@
-import { View, Text, TouchableOpacity, Image, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, Image, ScrollView, Alert } from "react-native";
 import React, { useState, useEffect } from "react";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import ButtonComponent from "@/components/button";
 import { useSelector, useDispatch } from "react-redux";
-import * as appwrite from "react-native-appwrite";
 import { RootState } from "@/lib/store/store";
 import BackArrowIcon from "@/components/svg/backArrow";
 import AlexiumLogo2 from "@/components/svg/alexiumLogo2";
 import ChevronDownIcon from "@/components/svg/chevronDown";
-import { databases, databaseId, usersId, dealershipLevel2Id, dealershipLevel3Id, scansId, notificationsId } from "@/lib/appwrite";
-import { Query, ID } from "appwrite";
-import { setSelectedCustomer } from "@/lib/store/customerSlice";
-import { setCurrentScan, setCurrentCustomer } from "@/lib/store/currentSlice";
-import { Alert } from "react-native";
-import { setUserData } from "@/lib/store/userSlice";
+import { databases, databaseId, notificationsId, scansId } from "@/lib/appwrite";
+import { ID } from "appwrite";
+import { updateUserScan } from "@/lib/store/userSlice";
+import { updateScan } from "@/lib/store/scanSlice";
 
 // Define interfaces at the top of the file
 interface User {
@@ -23,101 +20,24 @@ interface User {
   [key: string]: any;
 }
 
-interface Scan {
-    $id: string;
-    users: string | { $id: string; name?: string; [key: string]: any };
-    $createdAt: string;
-    user?: {
-      $id: string;
-      name: string;
-      [key: string]: any;
-    };
-    [key: string]: any;
-}
-
 const CustomerAssignmentScreen = () => {
+  // Hooks at the top-level of the component
   const userData = useSelector((state: RootState) => state.user.data);
-  const currentDealershipLevel2 = useSelector((state: RootState) => state.current.currentDealershipLevel2);
-  const currentDealershipLevel3 = useSelector((state: RootState) => state.current.currentDealershipLevel3);
+  const scanData = useSelector((state: RootState) => state.scan);
+  const dealershipUsers = useSelector((state: RootState) => state.dealershipUsers.data);
+  const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
+  const currentUserId = useSelector((state: RootState) => state.current.currentUserId);
+
   const [selectedName, setSelectedName] = useState<string | null>(
     userData?.name || null
   );
-  const customer = useSelector((state: RootState) => state.customer.selectedCustomer);
-  const [allUsers, setAllUsers] = useState<any[]>([]); // State to hold users list
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    const fetchDealershipUsers = async () => {
-      setIsLoading(true);
-      try {
-        if (!userData || !userData.$id) {
-          console.error("No user data or user ID available");
-          return;
-        }
-
-        console.log("Current user data:", userData);
-        console.log("Current dealership levels:", { currentDealershipLevel2, currentDealershipLevel3 });
-        
-        // Determine which dealership level to fetch
-        let collectionId: string;
-        let dealershipId: string | null;
-
-        if (currentDealershipLevel3) {
-          collectionId = dealershipLevel3Id;
-          dealershipId = currentDealershipLevel3;
-        } else if (currentDealershipLevel2) {
-          collectionId = dealershipLevel2Id;
-          dealershipId = currentDealershipLevel2;
-        } else {
-          console.error("No dealership level found");
-          return;
-        }
-
-        console.log(`Fetching dealership from collection ${collectionId}:`, dealershipId);
-
-        // First, fetch the dealership document
-        const dealershipResponse = await databases.getDocument(
-          databaseId,
-          collectionId,
-          dealershipId
-        );
-
-        console.log("Fetched dealership:", dealershipResponse);
-
-        // Get the users from the dealership document and include current user
-        const dealershipUsers = dealershipResponse.users || [];
-        const currentUser = {
-          $id: userData.$id,
-          name: userData.name,
-          profileImage: userData.profileImage
-        };
-        
-        // Include current user and other users
-        const allDealershipUsers = [
-          currentUser, 
-          ...dealershipUsers.filter((user: User) => user.$id !== userData.$id)
-            .map((user: User) => ({
-              $id: user.$id,
-              name: user.name,
-              profileImage: user.profileImage
-            }))
-        ];
-        
-        console.log("All dealership users (including current):", allDealershipUsers);
-        setAllUsers(allDealershipUsers);
-      } catch (error) {
-        console.error("Error fetching dealership users:", error);
-        setAllUsers([]); // Reset to empty array on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDealershipUsers();
-  }, [userData, currentDealershipLevel2, currentDealershipLevel3]);
+  // Find the current scan and its customer data from userData
+  const currentScan = userData?.scans?.find(scan => scan.$id === currentScanId);
+  const customer = currentScan?.customers || null;
 
   const getInitials = (name: string) => {
     if (!name) return "CU";
@@ -136,7 +56,7 @@ const CustomerAssignmentScreen = () => {
 
   const renderNameOptions = () => {
     // Always show all users in the dropdown
-    return allUsers.map((user) => (
+    return dealershipUsers.map((user) => (
       <TouchableOpacity
         key={user.$id}
         className={`px-5 py-3 bg-white ${selectedName === user.name ? 'bg-gray-100' : ''}`}
@@ -174,246 +94,128 @@ const CustomerAssignmentScreen = () => {
         return;
       }
 
-      // Debug customer object structure
-      console.log("Customer object structure:", {
-        customer,
-        id: customer.id,
-        $id: customer.$id,
-        fullCustomer: JSON.stringify(customer)
-      });
-
-      // Find the selected user's full data from allUsers
-      const selectedUser = allUsers.find(user => user.name === selectedName);
+      // Find the selected user's full data from dealershipUsers
+      const selectedUser = dealershipUsers.find(user => user.name === selectedName);
       if (!selectedUser) {
         console.error("Selected user not found in users list");
         return;
       }
 
-      console.log("Starting assignment process:", {
-        selectedUser,
-        customer,
-        currentScans: customer.scans
-      });
-
-      // Get the latest scan (assuming it's the first one in the array)
-      const latestScan = customer.scans?.[0];
-      if (!latestScan) {
-        console.error("No scan found for this customer");
+      // Now that currentScanId is defined at the top level, we can use it here safely.
+      if (!currentScanId) {
+        Alert.alert('Error', 'No scan ID found');
         return;
       }
 
-      try {
-        // Update the scan with the selected user
-        const updatedScan = await databases.updateDocument(
-          databaseId,
-          scansId,
-          latestScan.$id,
-          {
-            users: selectedUser.$id // Update the users field with the selected user's ID
-          }
-        );
-        console.log("Successfully updated scan:", updatedScan);
-
-        // Get the full scan data with customer information
-        const fullScanData = await databases.getDocument(
-          databaseId,
-          scansId,
-          latestScan.$id
-        );
-
-        console.log("Full scan data for Redux:", fullScanData);
-
-        // Update the user's scans data in Redux
-        if (userData && userData.scans) {
-          const updatedScans = userData.scans.map(scan =>
-            scan.$id === latestScan.$id
-              ? { 
-                  ...fullScanData, // Include all database fields
-                  users: selectedUser.$id,
-                  user: {
-                    $id: selectedUser.$id,
-                    name: selectedUser.name,
-                    profileImage: selectedUser.profileImage
-                  },
-                  customers: {
-                    $id: customer.id || customer.$id,
-                    name: customer.name,
-                    phone: customer.phone,
-                    email: customer.email,
-                    profileImage: customer.profileImage,
-                    interestStatus: customer.interestStatus || "Hot",
-                    interestedIn: customer.interestedIn || "Buying"
-                  }
-                }
-              : scan
-          );
-          
-          // Update Redux with the complete data
-          dispatch(setUserData({ 
-            ...userData, 
-            scans: updatedScans 
-          }));
-
-          console.log("Updated user data in Redux:", {
-            scansCount: updatedScans.length,
-            latestScan: updatedScans.find(s => s.$id === latestScan.$id)
-          });
+      // Update scan document in Appwrite
+      await databases.updateDocument(
+        databaseId,
+        scansId,
+        currentScanId,
+        {
+          users: selectedUser.$id
         }
-      } catch (error) {
-        console.error("Error updating scan document:", error);
-        throw error;
-      }
+      );
+
+      // Update User scans in userSlice
+      dispatch(updateUserScan({
+        id: currentScanId,
+        data: {
+          users: selectedUser.$id,
+        }
+      }));
+      console.log("Updated user scan userSlice:", currentScanId);
+
+      // Update scans in scanSlice
+      dispatch(updateScan({
+        id: currentScanId,
+        data: {
+          users: selectedUser.$id,
+        }
+      }))
+      console.log("Updated scan scanSlice:", currentScanId);
 
       try {
         // Create notification only if this is a reassignment to a different consultant
-        const previousScan = customer.scans?.[1]; // Get the second most recent scan (if it exists)
-        console.log("Previous scan data:", {
-          previousScan,
-          rawUsers: previousScan?.users,
-          scansArray: customer.scans
-        });
-
+        const previousScan = userData?.scans?.find(scan => scan.$id !== currentScanId); // Get the second most recent scan (if it exists)
         const previousUserId = typeof previousScan?.users === 'string' ? previousScan.users : previousScan?.users?.$id;
-        console.log("Previous user analysis:", {
-          previousUserId,
-          type: typeof previousScan?.users,
-          currentSelectedUserId: selectedUser.$id,
-          isReassignment: previousUserId && previousUserId !== selectedUser.$id
-        });
         
         // Only create notification if there was a previous user and it's different from the current selection
         if (previousUserId && previousUserId !== selectedUser.$id) {
-          const customerId = customer.id || customer.$id;
+          const customerId = currentUserId;
           console.log("Attempting to create notification:", {
             previousUserId,
-            newUserId: selectedUser.$id,
-            customerId,
-            notificationType: 'reassigned'
+            selectedUserId: selectedUser.$id,
+            customerId
           });
 
-          // Create notification for reassignment only
-          const notification = await databases.createDocument(
+          await databases.createDocument(
             databaseId,
             notificationsId,
             ID.unique(),
             {
-              type: 'reassigned',
+              type: 'reassignment',
               read: false,
-              users: [selectedUser.$id],
-              customers: [customerId],
-              priorUsers: previousUserId
+              users: previousUserId,
+              customers: [customerId]
             }
           );
-          console.log("Successfully created notification:", notification);
-        } else {
-          console.log("Skipping notification creation because:", {
-            hasPreviousUser: !!previousUserId,
-            isSameUser: previousUserId === selectedUser.$id,
-            previousUserId,
-            selectedUserId: selectedUser.$id
-          });
         }
       } catch (error) {
-        console.error("Error in notification process:", error);
-        throw error;
+        console.error("Error creating notification:", error);
       }
 
-      // Update Redux store with current scan and customer IDs
-      const customerIdForRedux = customer.id || customer.$id;
-      console.log("Updating Redux store:", {
-        scanId: latestScan.$id,
-        customerId: customerIdForRedux
-      });
-      
-      dispatch(setCurrentScan(latestScan.$id));
-      dispatch(setCurrentCustomer(customerIdForRedux));
-
-      // Add a small delay to ensure Redux state is updated
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      console.log("Navigation to customer log starting...");
       router.push("/home/customers/customer-log");
-
     } catch (error) {
-      console.error("Error in assignment process:", error);
-      Alert.alert(
-        "Error",
-        "Failed to complete the assignment process. Please try again."
-      );
+      console.error("Error assigning customer:", error);
+      Alert.alert('Error', 'Failed to assign customer. Please try again.');
     } finally {
       setIsAssigning(false);
     }
   };
 
   const renderPriorUsers = () => {
-    if (isLoading) {
-      return (
-        <View className="placeholder:text-gray-500 bg-color3 rounded-md py-3 px-4 mt-1 w-full">
-          <Text className="text-xs">Loading prior consultants...</Text>
-        </View>
-      );
+    if (!dealershipUsers || dealershipUsers.length === 0) {
+      return null;
     }
-
-    console.log('Rendering prior users with data:', {
-      customerScans: customer?.scans,
-      currentUserName: userData?.name,
-      allUsers
-    });
-
-    if (customer?.scans && customer.scans.length > 0) {
-      const priorUserNames = new Set<string>(); // Use Set to avoid duplicates
-
-      customer.scans.forEach((scan: Scan) => {
-        // Get the user ID - handle both string and object cases
-        const userId = typeof scan.users === 'string' ? scan.users : scan.users?.$id;
-        
-        console.log('Processing scan:', {
-          scanId: scan.$id,
-          scanUser: scan.user,
-          scanUserId: userId,
-          scanUsersRaw: scan.users,
-          foundUser: userId ? allUsers.find(u => u.$id === userId) : null
-        });
-
-        // Check both expanded user data and user ID
-        if (scan.user?.name && scan.user.name !== userData?.name) {
-          console.log('Adding user from scan.user:', scan.user.name);
-          priorUserNames.add(scan.user.name);
-        } else if (userId) {
-          // Find user in allUsers list by ID
-          const user = allUsers.find(u => u.$id === userId);
-          if (user && user.name !== userData?.name) {
-            console.log('Adding user from allUsers:', user.name);
-            priorUserNames.add(user.name);
-          }
-        }
-      });
-      
-
-      const uniquePriorUserNames = Array.from(priorUserNames);
-      console.log('Final prior user names:', uniquePriorUserNames);
-
-      if (uniquePriorUserNames.length > 0) {
-        return (
-          <View className="placeholder:text-gray-500 bg-color3 rounded-md py-3 px-4 mt-1 w-full">
-            <Text className="text-xs">{uniquePriorUserNames.join(", ")}</Text>
-          </View>
-        );
-      } else {
-        return (
-          <View className="placeholder:text-gray-500 bg-color3 rounded-md py-3 px-4 mt-1 w-full">
-            <Text className="text-xs">No prior consultants (excluding you)</Text>
-          </View>
-        );
-      }
-    } else {
-      return (
-        <View className="placeholder:text-gray-500 bg-color3 rounded-md py-3 px-4 mt-1 w-full">
-          <Text className="text-xs">No prior consultants</Text>
-        </View>
-      );
+  
+    const currentUserId = userData?.$id;
+  
+    // Extract unique consultant IDs from scanData (using the `users` field)
+    const priorUserIds = [
+      ...new Set(
+        scanData?.data?.length
+          ? scanData.data
+              .map(scan =>
+                typeof scan.users === "string" ? scan.users : scan.users?.$id
+              )
+              .filter(userId => userId && userId !== currentUserId)
+          : []
+      ),
+    ];
+  
+    // Map IDs to full user objects and filter out any undefined values
+    const priorUsers = priorUserIds
+      .map((userId) => dealershipUsers.find((u) => u.$id === userId))
+      .filter((user): user is User => Boolean(user));
+  
+    if (priorUsers.length === 0) {
+      return null;
     }
+  
+    // Join the names of the prior consultants, comma separated
+    const priorUserNames = priorUsers.map((user) => user.name).join(", ");
+  
+    return (
+      <View className="mt-4">
+        <Text className="text-gray-500 text-[10px] mb-2">Prior Consultants</Text>
+        <View>
+          <Text className="text-sm text-gray-700">{priorUserNames}</Text>
+        </View>
+      </View>
+    );
   };
+  
 
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
@@ -424,7 +226,6 @@ const CustomerAssignmentScreen = () => {
     setIsDropdownOpen(false);
   };
 
-  
   return (
     <View className="pt-7 px-7 pb-7 h-screen justify-between gap-5">
       <View>
@@ -448,7 +249,6 @@ const CustomerAssignmentScreen = () => {
           </Text>
         </View>
         
-
         {/* Customer Info */}
         <View className="bg-color8 rounded-md px-5 py-7 mt-5 flex-row gap-5">
           {customer ? (
@@ -464,7 +264,7 @@ const CustomerAssignmentScreen = () => {
                   style={{ width: 64, height: 64 }}
                 >
                   <Text className="text-white font-bold" style={{ fontSize: 20 }}>
-                    {getInitials(customer.name)}
+                    {getInitials(customer.name || '')}
                   </Text>
                 </View>
               )}
@@ -481,12 +281,10 @@ const CustomerAssignmentScreen = () => {
           )}
           <View className="gap-1">
             <Text className="text-white text-[10px]">
-              Customer Name:{" "}
-              <Text className="font-bold">{customer?.name || "N/A"}</Text>
+              Customer Name: <Text className="font-bold">{customer?.name || "N/A"}</Text>
             </Text>
             <Text className="text-white text-[10px]">
-              Contact Number:{" "}
-              <Text className="font-bold">{customer?.phone || "N/A"}</Text>
+              Contact Number: <Text className="font-bold">{customer?.phone || "N/A"}</Text>
             </Text>
             <Text className="text-white text-[10px]">
               Email: <Text className="font-bold">{customer?.email || "N/A"}</Text>
@@ -494,16 +292,13 @@ const CustomerAssignmentScreen = () => {
           </View>
         </View>
 
-        {/* User List*/}
+        {/* Prior Consultants */}
         <View className="mt-6">
-          <Text className="text-[10px] text-gray-500">
-            Prior Sales Consultant(s)
-          </Text>
           {renderPriorUsers()}
         </View>
 
         {/* Name Select */}
-        <View className="mt-3 relative z-10 w-full">
+        <View className="mt-5 relative z-10 w-full">
           <Text className="text-[10px] text-gray-500">Your Name</Text>
           <TouchableOpacity
             className="rounded-md bg-color3 px-5 py-3 mt-1 flex-row items-center justify-between"
@@ -512,10 +307,10 @@ const CustomerAssignmentScreen = () => {
             <View className="flex-row items-center gap-2">
               {selectedName && (
                 <>
-                  {allUsers.find(u => u.name === selectedName)?.profileImage && 
-                   allUsers.find(u => u.name === selectedName)?.profileImage !== 'black' ? (
+                  {dealershipUsers.find(u => u.name === selectedName)?.profileImage && 
+                   dealershipUsers.find(u => u.name === selectedName)?.profileImage !== 'black' ? (
                     <Image
-                      source={{ uri: allUsers.find(u => u.name === selectedName)?.profileImage }}
+                      source={{ uri: dealershipUsers.find(u => u.name === selectedName)?.profileImage }}
                       style={{ width: 24, height: 24, borderRadius: 12 }}
                     />
                   ) : (
@@ -566,7 +361,7 @@ const CustomerAssignmentScreen = () => {
           <ButtonComponent
             label={isAssigning ? "Assigning..." : "Apply"}
             onPress={handleAssign}
-            disabled={isAssigning || isLoading || !selectedName}
+            disabled={isAssigning || !selectedName}
             loading={isAssigning}
           />
         </View>

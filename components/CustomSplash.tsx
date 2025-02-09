@@ -8,8 +8,8 @@ const CustomSplash = () => {
         source={require("@/assets/images/alexium-logo.webp")}
         style={{ width: 120, height: 120 }}
       />
-      <Text className="text-2xl font-semibold mt-4">Digital Dealer</Text>
-      <Text className="text-[10px] text-color2 mt-1">POWERED BY ALEXIUM</Text>
+      <Text className="text-xl font-semibold mt-4">Digital Dealer</Text>
+      <Text className="text-[9px] text-color2 mt-1">POWERED BY ALEXIUM</Text>
     </View>
   );
 };

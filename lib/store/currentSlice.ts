@@ -2,87 +2,87 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface CurrentState {
-  currentDealershipLevel1: string | null;
-  currentDealershipLevel2: string | null;
-  currentDealershipLevel3: string | null;
-  currentConsultant: string | null;
-  currentCustomer: string | null;
-  currentScan: string | null;
+  currentDealershipLevel1Id: string | null;
+  currentDealershipLevel2Id: string | null;
+  currentDealershipLevel3Id: string | null;
+  currentUserId: string | null;
+  currentCustomerId: string | null;
+  currentScanId: string | null;
 }
 
 const initialState: CurrentState = {
-  currentDealershipLevel1: null,
-  currentDealershipLevel2: null,
-  currentDealershipLevel3: null,
-  currentConsultant: null,
-  currentCustomer: null,
-  currentScan: null,
+  currentDealershipLevel1Id: null,
+  currentDealershipLevel2Id: null,
+  currentDealershipLevel3Id: null,
+  currentUserId: null,
+  currentCustomerId: null,
+  currentScanId: null,
 };
 
 export const currentSlice = createSlice({
   name: 'current',
   initialState,
   reducers: {
-    setCurrentDealershipLevel1: (state, action: PayloadAction<string | null>) => {
-      state.currentDealershipLevel1 = action.payload;
+    setCurrentDealershipLevel1Id: (state, action: PayloadAction<string | null>) => {
+      state.currentDealershipLevel1Id = action.payload;
     },
-    resetCurrentDealershipLevel1: (state) => {
-      state.currentDealershipLevel1 = null;
+    resetCurrentDealershipLevel1Id: (state) => {
+      state.currentDealershipLevel1Id = null;
     },
-    setCurrentDealershipLevel2: (state, action: PayloadAction<string | null>) => {
-      state.currentDealershipLevel2 = action.payload;
+    setCurrentDealershipLevel2Id: (state, action: PayloadAction<string | null>) => {
+      state.currentDealershipLevel2Id = action.payload;
     },
-    resetCurrentDealershipLevel2: (state) => {
-      state.currentDealershipLevel2 = null;
+    resetCurrentDealershipLevel2Id: (state) => {
+      state.currentDealershipLevel2Id = null;
     },
-    setCurrentDealershipLevel3: (state, action: PayloadAction<string | null>) => {
-      state.currentDealershipLevel3 = action.payload;
+    setCurrentDealershipLevel3Id: (state, action: PayloadAction<string | null>) => {
+      state.currentDealershipLevel3Id = action.payload;
     },
-    resetCurrentDealershipLevel3: (state) => {
-      state.currentDealershipLevel3 = null;
+    resetCurrentDealershipLevel3Id: (state) => {
+      state.currentDealershipLevel3Id = null;
     },
-    setCurrentConsultant: (state, action: PayloadAction<string | null>) => {
-      state.currentConsultant = action.payload;
+    setCurrentUserId: (state, action: PayloadAction<string | null>) => {
+      state.currentUserId = action.payload;
     },
-    resetCurrentConsultant: (state) => {
-      state.currentConsultant = null;
+    resetCurrentUserId: (state) => {
+      state.currentUserId = null;
     },
-    setCurrentCustomer: (state, action: PayloadAction<string | null>) => {
-      state.currentCustomer = action.payload;
+    setCurrentCustomerId: (state, action: PayloadAction<string | null>) => {
+      state.currentCustomerId = action.payload;
     },
-    resetCurrentCustomer: (state) => {
-      state.currentCustomer = null;
+    resetCurrentCustomerId: (state) => {
+      state.currentCustomerId = null;
     },
-    setCurrentScan: (state, action: PayloadAction<string | null>) => {
-      state.currentScan = action.payload;
+    setCurrentScanId: (state, action: PayloadAction<string | null>) => {
+      state.currentScanId = action.payload;
     },
-    resetCurrentScan: (state) => {
-      state.currentScan = null;
+    resetCurrentScanId: (state) => {
+      state.currentScanId = null;
     },
     resetCurrentAll: (state) => {
-      state.currentDealershipLevel1 = null;
-      state.currentDealershipLevel2 = null;
-      state.currentDealershipLevel3 = null;
-      state.currentConsultant = null;
-      state.currentCustomer = null;
-      state.currentScan = null;
+      state.currentDealershipLevel1Id = null;
+      state.currentDealershipLevel2Id = null;
+      state.currentDealershipLevel3Id = null;
+      state.currentUserId = null;
+      state.currentCustomerId = null;
+      state.currentScanId = null;
     },
   },
 });
 
 export const {
-  setCurrentDealershipLevel1,
-  resetCurrentDealershipLevel1,
-  setCurrentDealershipLevel2,
-  resetCurrentDealershipLevel2,
-  setCurrentDealershipLevel3,
-  resetCurrentDealershipLevel3,
-  setCurrentConsultant,
-  resetCurrentConsultant,
-  setCurrentCustomer,
-  resetCurrentCustomer,
-  setCurrentScan,
-  resetCurrentScan,
+  setCurrentDealershipLevel1Id,
+  resetCurrentDealershipLevel1Id,
+  setCurrentDealershipLevel2Id,
+  resetCurrentDealershipLevel2Id,
+  setCurrentDealershipLevel3Id,
+  resetCurrentDealershipLevel3Id,
+  setCurrentUserId,
+  resetCurrentUserId,
+  setCurrentCustomerId,
+  resetCurrentCustomerId,
+  setCurrentScanId,
+  resetCurrentScanId,
   resetCurrentAll,
 } = currentSlice.actions;
 
