@@ -16,6 +16,7 @@ import ActivitiesFilter from "@/components/activitiesFilter";
 import { databases, databaseId, usersId, account } from "@/lib/appwrite";
 import { Query } from "appwrite";
 import { setUserData } from "@/lib/store/userSlice";
+import ButtonComponent from "@/components/button";
 
 interface DealershipLevel2 {
   $id: string;
@@ -501,6 +502,9 @@ const HomeScreen = () => {
             </View>
           </View>
         </Modal>
+        <View className="mb-40">
+          <ButtonComponent label="Test" onPress={() => router.push("/test")} />
+        </View>
       </ScrollView>
     </View>
   );

@@ -19,6 +19,9 @@ import EditIcon2 from "@/components/svg/editIcon2";
 import relativeTime from "dayjs/plugin/relativeTime";
 import CalendarModal from "@/components/calendarModal";
 import { addComment } from "@/lib/store/commentSlice";
+import { updateScan } from "@/lib/store/scanSlice";
+import { updateUserScan } from "@/lib/store/userSlice";
+import SuccessAnimation from '@/components/successAnimation';
 
 dayjs.extend(relativeTime);
 
@@ -26,12 +29,6 @@ interface Scan {
   $id: string;
   $createdAt: string;
   users: string | { $id: string; name?: string; profileImage?: string; [key: string]: any };
-  user?: {
-    $id: string;
-    name: string;
-    profileImage?: string;
-    [key: string]: any;
-  };
   customers: CustomerData;
   interestStatus?: string;
   interestedIn?: string;
@@ -72,6 +69,45 @@ interface AssignmentHistory {
     profileImage?: string;
 }
 
+function getUserId(user: string | { $id: string; name?: string; email?: string; profileImage?: string } | undefined): string {
+  if (!user) return '';
+  return typeof user === 'string' ? user : user.$id;
+}
+
+function getUserDetails(user: string | { $id: string; name?: string; email?: string; profileImage?: string } | undefined): { $id: string; name: string; email: string; profileImage?: string } {
+  if (!user || typeof user === 'string') {
+    return { $id: typeof user === 'string' ? user : '', name: '', email: '', profileImage: undefined };
+  }
+  return { $id: user.$id, name: user.name || '', email: user.email || '', profileImage: user.profileImage };
+}
+
+// New SkeletonLoader component
+function SkeletonLoader() {
+  return (
+    <View className="gap-4">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <View key={index} className="p-4 bg-white rounded-md animate-pulse">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <View className="w-8 h-8 rounded-full bg-color3" />
+              <View className="gap-1">
+                <View className="w-24 h-4 bg-color3 rounded" />
+                <View className="w-16 h-4 bg-color3 rounded" />
+              </View>
+            </View>
+            <View className="w-6 h-6 bg-color3 rounded" />
+          </View>
+          <View className="mt-2 gap-2">
+            <View className="h-4 bg-color3 rounded" />
+            <View className="h-4 bg-color3 rounded w-5/6" />
+            <View className="h-4 bg-color3 rounded w-4/6" />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const CustomerLogScreen = () => {
     const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomerId);
     const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
@@ -92,24 +128,30 @@ const CustomerLogScreen = () => {
 
     // Assignment history from scan data
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistory[]>(() => {
-        if (!scanData?.data) return [];
-        
-        // Filter scans by current customer ID
-        const customerScans = scanData.data.filter(scan => 
-            typeof scan.customers === 'string' 
+        if (!scanData) return [];
+        // Filter scans for the current customer
+        const customerScans = scanData.filter(scan =>
+            typeof scan.customers === 'string'
                 ? scan.customers === currentCustomerId
                 : scan.customers?.$id === currentCustomerId
         );
 
-        // Map to assignment history format, using the users data
-        return customerScans
-            .map(scan => ({
-                date: scan.$createdAt,
-                userId: typeof scan.users === 'string' ? scan.users : scan.users?.$id || '',
-                userName: typeof scan.users === 'string' ? '' : scan.users?.name || '',
-                profileImage: typeof scan.users === 'string' ? undefined : scan.users?.profileImage
-            }))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        // Sort the scans chronologically (earliest first)
+        const sortedScans = customerScans.sort((a, b) => new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime());
+
+        const reassignments: AssignmentHistory[] = [];
+        // Include the first assignment and any change in assigned consultant
+        sortedScans.forEach(scan => {
+            const userId = typeof scan.users === 'string' ? scan.users : scan.users?.$id || '';
+            const userName = typeof scan.users === 'string' ? '' : scan.users?.name || '';
+            const profileImage = typeof scan.users === 'string' ? undefined : scan.users?.profileImage;
+            if (reassignments.length === 0 || reassignments[reassignments.length - 1].userId !== userId) {
+                reassignments.push({ date: scan.$createdAt, userId, userName, profileImage });
+            }
+        });
+
+        // Return the reassignments with the latest at the top
+        return reassignments.reverse();
     });
 
     const [comment, setComment] = useState('');
@@ -131,6 +173,9 @@ const CustomerLogScreen = () => {
     const [localFollowUpDate, setLocalFollowUpDate] = useState<string | undefined>(
         currentScan?.followUpDate
     );
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showCommentSuccess, setShowCommentSuccess] = useState(false);
+    const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -145,6 +190,30 @@ const CustomerLogScreen = () => {
             setLocalFollowUpDate(currentScan.followUpDate);
         }
     }, [currentScan, currentScanId, currentCustomerId]);
+
+    useEffect(() => {
+        if (activeTab === 'thread' && currentCustomerId) {
+            const fetchComments = async () => {
+                setIsLoadingThread(true);
+                try {
+                    const response = await databases.listDocuments(databaseId, commentsId, [Query.equal('customers', currentCustomerId)]);
+                    const fetchedComments: Comment[] = response.documents.map((doc: any) => ({
+                        $id: doc.$id,
+                        $createdAt: doc.$createdAt,
+                        comment: doc.comment,
+                        customers: doc.customers,
+                        users: doc.users
+                    }));
+                    setComments(fetchedComments);
+                } catch (error) {
+                    console.error('Error fetching thread comments', error);
+                } finally {
+                    setIsLoadingThread(false);
+                }
+            };
+            fetchComments();
+        }
+    }, [activeTab, currentCustomerId]);
 
     const handleTabChange = (tab: 'comments' | 'thread' | 'history') => {
         setActiveTab(tab);
@@ -198,18 +267,19 @@ const CustomerLogScreen = () => {
     };
 
 
-    const handleUpdate = async (additionalData?: any) => {
+    const handleUpdate = async () => {
         if (isUpdating || !currentScanId) return;
+        console.log("handleUpdate called");
         setIsUpdating(true);
 
         try {
-            // Update scan document
             const updateData = {
-                interestStatus: value,
-                interestedIn: interestedIn[0] || null,
-                followUpDate: localFollowUpDate,
-                ...additionalData
+                interestStatus: value || "Hot",
+                interestedIn: interestedIn[0] || "Buying",
+                followUpDate: localFollowUpDate || dayjs().format('YYYY-MM-DDTHH:mm:ss'),
+                users: getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users),
             };
+            console.log("handleUpdate: updateData prepared:", updateData);
 
             const response = await databases.updateDocument(
                 databaseId,
@@ -217,19 +287,20 @@ const CustomerLogScreen = () => {
                 currentScanId,
                 updateData
             );
+            console.log("handleUpdate: updateDocument response:", response);
 
-            // Update Redux scan state
             if (userData?.scans) {
                 userData.scans.forEach(scan => {
                     if (scan.$id === currentScanId) {
                         dispatch(updateScan({ id: scan.$id, data: updateData }));
+                        dispatch(updateUserScan({ id: scan.$id, data: updateData }));
+                        console.log("handleUpdate: Updated scan in Redux for scan id:", scan.$id);
                     }
                 });
             }
 
-            // Update comments if needed
             if (comment.trim()) {
-                // Create comment and update comment state
+                console.log("handleUpdate: Adding comment with text:", comment.trim());
                 const newComment = await databases.createDocument(
                     databaseId,
                     commentsId,
@@ -237,26 +308,26 @@ const CustomerLogScreen = () => {
                     {
                         comment: comment.trim(),
                         customers: currentCustomerId,
-                        users: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id,
+                        users: getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users),
                     }
                 );
 
-                // Transform the Appwrite document into the expected Comment shape
                 const transformedComment: Comment = {
                     $id: newComment.$id,
                     $createdAt: newComment.$createdAt,
                     comment: newComment.comment,
                     customers: newComment.customers,
-                    users: {
-                        $id: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id || '',
-                        name: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.name || '',
-                        email: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.email || '', 
-                        profileImage: userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.profileImage
-                    }
+                    users: getUserDetails(userData?.scans?.find(scan => scan.$id === currentScanId)?.users)
                 };
-                
+                console.log("handleUpdate: New comment created:", transformedComment);
                 dispatch(addComment(transformedComment));
             }
+
+            // Show success animation
+            setShowSuccess(true);
+            setTimeout(() => {
+                setShowSuccess(false);
+            }, 2000); // Hide after 2 seconds
 
         } catch (error) {
             console.error('Error updating scan:', error);
@@ -273,6 +344,7 @@ const CustomerLogScreen = () => {
             }
         } finally {
             setIsUpdating(false);
+            console.log("handleUpdate: Finished update process. isUpdating set to false.");
         }
     };
 
@@ -379,6 +451,13 @@ const CustomerLogScreen = () => {
             );
             setEditingCommentId(null);
             setEditedComment('');
+
+            // Show success animation for editing comment
+            setShowCommentSuccess(true);
+            setTimeout(() => {
+                setShowCommentSuccess(false);
+            }, 2000); // Hide after 2 seconds
+
         } catch (error) {
             console.error("Error updating comment:", error);
             Alert.alert("Error", "Failed to update comment");
@@ -399,6 +478,13 @@ const CustomerLogScreen = () => {
                 prevComments.filter(comment => comment.$id !== commentId)
             );
             setShowOptions(null);
+
+            // Show success animation for deleting comment
+            setShowDeleteSuccess(true);
+            setTimeout(() => {
+                setShowDeleteSuccess(false);
+            }, 2000); // Hide after 2 seconds
+
         } catch (error) {
             console.error("Error deleting comment:", error);
             Alert.alert("Error", "Failed to delete comment");
@@ -499,6 +585,9 @@ const CustomerLogScreen = () => {
 
     return (
         <>
+            {showSuccess && <SuccessAnimation message='Customer Log Updated' />}
+            {showCommentSuccess && <SuccessAnimation message='Comment Edited Successfully' />}
+            {showDeleteSuccess && <SuccessAnimation message='Comment Deleted Successfully' />}
             <View
             style={{
                 position: 'absolute',
@@ -512,6 +601,7 @@ const CustomerLogScreen = () => {
                 pointerEvents: isCalendarModalVisible ? 'auto' : 'none',
             }}
         />
+        
         <ScrollView ref={scrollViewRef} className='pt-7 px-7 pb-32'>
             {/* Header */}
             <View className='flex-row w-full justify-between items-center'>
@@ -817,16 +907,14 @@ const CustomerLogScreen = () => {
                     ) : (
                         <View className="mt-5">
                             {isLoadingThread ? (
-                                <View className="flex-row justify-center items-center py-8">
-                                    <ActivityIndicator size="large" color="#3D12FA" />
-                                </View>
-                            ) : comments.length === 0 ? (
+                                <SkeletonLoader />
+                            ) : comments.slice().reverse().length === 0 ? (
                                 <View className="bg-color3 rounded-md p-4">
                                     <Text className="text-gray-500 text-xs">No comments yet</Text>
                                 </View>
                             ) : (
                                 <View className="gap-2">
-                                    {comments.map((comment) => (
+                                    {comments.slice().reverse().map((comment) => (
                                         <View key={comment.$id}>
                                             <View 
                                                 className={`${showOptions === comment.$id ? 'bg-color3' : 'bg-white'} rounded-md p-4`}
@@ -844,7 +932,7 @@ const CustomerLogScreen = () => {
                                                         </View>
                                                     </View>
                                                     {/* Only show dots menu for user's own comments */}
-                                                    {comment.users?.$id === userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id && (
+                                                    {getUserId(comment.users) === getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users) && (
                                                         <TouchableOpacity 
                                                             onPress={() => handleCommentOptions(comment.$id)}
                                                         >
@@ -858,7 +946,7 @@ const CustomerLogScreen = () => {
                                                 </View>
                                                 <View>
                                                     {/* Only allow editing for user's own comments */}
-                                                    {editingCommentId === comment.$id && comment.users?.$id === userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id ? (
+                                                    {editingCommentId === comment.$id && getUserId(comment.users) === getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users) ? (
                                                         <View className="mt-2">
                                                             <TextInput
                                                                 value={editedComment}
@@ -897,7 +985,7 @@ const CustomerLogScreen = () => {
                                                 </View>
                                             </View>
                                             {/* Only show options menu for user's own comments */}
-                                            {showOptions === comment.$id && comment.users?.$id === userData?.scans?.find(scan => scan.$id === currentScanId)?.users?.$id && (
+                                            {showOptions === comment.$id && getUserId(comment.users) === getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users) && (
                                                 <>
                                                     <TouchableOpacity 
                                                         style={{
