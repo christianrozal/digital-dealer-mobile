@@ -20,7 +20,7 @@ import {
   dealershipLevel2Id,
   dealershipLevel3Id
 } from '@/lib/appwrite';
-import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
+import { setCustomerAddSuccess } from '@/lib/store/uiSlice';
 import { setUserData } from '@/lib/store/userSlice';
 
 const AddCustomerScreen = () => {
@@ -124,7 +124,7 @@ const AddCustomerScreen = () => {
       );
 
       // Dispatch the UI flag so that SuccessAnimation is shown in the Customers screen.
-      dispatch(setCustomerUpdateSuccess(true));
+      dispatch(setCustomerAddSuccess(true));
       console.log('New customer created successfully!');
       router.back();
 

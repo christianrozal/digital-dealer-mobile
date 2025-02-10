@@ -21,7 +21,7 @@ import ScannerIcon from "@/components/svg/scannerIcon";
 import { databases, databaseId, usersId } from "@/lib/appwrite";
 import { setUserData } from "@/lib/store/userSlice";
 import SuccessAnimation from "@/components/successAnimation";
-import { setCustomerUpdateSuccess } from "@/lib/store/uiSlice";
+import { setCustomerUpdateSuccess, setSwitchSuccess, setCustomerAddSuccess } from "@/lib/store/uiSlice";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -44,6 +44,8 @@ const HomeLayout = () => {
     // Assume notifications are stored in state.notifications.documents
     const notifications = useSelector((state: RootState) => state.notifications.documents);
     const hasUnreadNotifications = notifications ? notifications.some((n: any) => !n.read) : false;
+    const switchSuccess = useSelector((state: RootState) => state.ui.switchSuccess);
+    const customerAddSuccess = useSelector((state: RootState) => state.ui.customerAddSuccess);
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -63,30 +65,6 @@ const HomeLayout = () => {
 
         fetchUserData();
     }, []);
-
-    const openGesture = Gesture.Pan()
-        .hitSlop({ left: 0, width: 30 })
-        .onBegin((e) => {
-            if (translateX.value === -SCREEN_WIDTH * 0.95 && e.x < 30) {
-                return;
-            }
-        })
-        .onUpdate((e) => {
-            const newTranslate = -SCREEN_WIDTH * 0.95 + e.translationX;
-            translateX.value = Math.min(
-                0,
-                Math.max(-SCREEN_WIDTH * 0.95, newTranslate)
-            );
-        })
-        .onEnd((e) => {
-            if (e.translationX > SCREEN_WIDTH * 0.3 || e.velocityX > 500) {
-                translateX.value = withSpring(0, { velocity: e.velocityX });
-            } else {
-                translateX.value = withSpring(-SCREEN_WIDTH * 0.95, {
-                    velocity: e.velocityX,
-                });
-            }
-        });
 
     const validPaths = [
         "/home",
@@ -113,144 +91,135 @@ const HomeLayout = () => {
       };
 
     return (
-        <GestureDetector gesture={openGesture}>
-            <View className="flex-1 bg-white">
-                {customerUpdateSuccess && (
-                    <SuccessAnimation
-                        message="Customer Created"
-                        isSuccess={true}
-                        onAnimationComplete={() => dispatch(setCustomerUpdateSuccess(false))}
-                    />
-                )}
-                {shouldRenderLayout ? (
-                    <>
-                    <View
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            zIndex: 50,
-                            width: '100%',
-                            height: '100%',
-                            backgroundColor: 'black',
-                            opacity: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 0.1 : 0,
-                            pointerEvents: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 'auto' : 'none',
+        <View className="flex-1 bg-white">
+            {shouldRenderLayout ? (
+                <>
+                <View
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        zIndex: 50,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'black',
+                        opacity: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 0.1 : 0,
+                        pointerEvents: isActivitiesFilterVisible || isCustomersFilterVisible || isAnalyticsFilterVisible ? 'auto' : 'none',
+                    }}
+                />
+                {/* Header */}
+                <View className="absolute top-0 left-0 right-0 h-[60px] flex-row justify-between items-center px-5 z-20 bg-white">
+                    {/* User Icon */}
+                    <TouchableOpacity className="justify-center items-center h-[60px] px-4 -translate-x-4"
+                        onPress={() => {
+                            if (translateX.value === -SCREEN_WIDTH * 0.95) {
+                                translateX.value = withSpring(0);
+                            }
                         }}
-                    />
-                    {/* Header */}
-                    <View className="absolute top-0 left-0 right-0 h-[60px] flex-row justify-between items-center px-5 z-20 bg-white">
-                        {/* User Icon */}
-                        <TouchableOpacity
-                            onPress={() => {
-                                if (translateX.value === -SCREEN_WIDTH * 0.95) {
-                                    translateX.value = withSpring(0);
-                                }
+                    >
+                        <View
+                            style={{
+                                backgroundColor: '#3D12FA', // color1
+                                borderRadius: 9999,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 32,
+                                height: 32
                             }}
                         >
-                            <View
-                                style={{
-                                    backgroundColor: '#3D12FA', // color1
-                                    borderRadius: 9999,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    width: 32,
-                                    height: 32
-                                }}
-                            >
-                                {userData?.profileImage ? (
-                                    <Image
-                                        source={{ uri: userData.profileImage }}
-                                        style={{ width: 32, height: 32, borderRadius: 16 }}
-                                    />
-                                ) : (
-                                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
-                                        {getInitials(userData?.name || '')}
-                                    </Text>
-                                )}
-                            </View>
-                        </TouchableOpacity>
-
-                        {/* Logo */}
-                        <View>
-                            <AlexiumLogo2 width={64 * 1.3} height={14 * 1.3} />
-                        </View>
-
-                        {/* Header Icons */}
-                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                            <TouchableOpacity onPress={() => router.push("/home/analytics")}>
-                                <AnalyticsIcon
-                                    width={20}
-                                    height={20}
-                                    stroke={pathname === "/home/analytics" ? "#3D12FA" : "#9EA5AD"}
+                            {userData?.profileImage ? (
+                                <Image
+                                    source={{ uri: userData.profileImage }}
+                                    style={{ width: 32, height: 32, borderRadius: 16 }}
                                 />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => router.push("/home/notifications")}
-                            >
-                                <NotificationsIcon
-                                    width={20}
-                                    height={20}
-                                    stroke={pathname === "/home/notifications" ? "#3D12FA" : "#9EA5AD"}
-                                    hasUnread={hasUnreadNotifications}
-                                />
-                            </TouchableOpacity>
+                            ) : (
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+                                    {getInitials(userData?.name || '')}
+                                </Text>
+                            )}
                         </View>
+                    </TouchableOpacity>
+
+                    {/* Logo */}
+                    <View style={{ transform: [{ translateX: 16 }] }}>
+                        <AlexiumLogo2 width={64 * 1.2} height={14 * 1.2} />
                     </View>
 
-
-                    {/* Side Pane */}
-                    <SidePaneComponent translateX={translateX} />
-
-
-                       {/* Bottom Navigation */}
-            <View className="absolute bottom-0 left-0 right-0 h-[70px] flex-row justify-center items-center gap-10 bg-white border-t border-gray-100 z-10">
-                        <TouchableOpacity
-                style={{ alignItems: 'center' }}
-                            onPress={() => router.push("/home")}
-                        >
-                            <ActivityIcon
-                                stroke={pathname === "/home" ? "#3D12FA" : "#BECAD6"}
+                    {/* Header Icons */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', transform: [{ translateX: 4 }] }}>
+                        <TouchableOpacity className="justify-center items-center h-[60px] pl-5 pr-1" onPress={() => router.push("/home/analytics")}>
+                            <AnalyticsIcon
+                                width={24}
+                                height={24}
+                                stroke={pathname === "/home/analytics" ? "#3D12FA" : "#9EA5AD"}
                             />
+                        </TouchableOpacity>
+                        <TouchableOpacity className="justify-center items-center h-[60px] px-1" onPress={() => router.push("/home/notifications")}>
+                            <NotificationsIcon
+                                width={27}
+                                height={27}
+                                stroke={pathname === "/home/notifications" ? "#3D12FA" : "#9EA5AD"}
+                                hasUnread={hasUnreadNotifications}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+
+                {/* Side Pane */}
+                <SidePaneComponent translateX={translateX} />
+
+
+                   {/* Bottom Navigation */}
+        <View className="absolute bottom-0 left-0 right-0 h-[70px] flex-row justify-center items-center bg-white border-t border-gray-100 z-10">
+                    <TouchableOpacity className="justify-center items-center h-[70px] px-5"
+                style={{ alignItems: 'center' }}
+                        onPress={() => router.push("/home")}
+                    >
+                        <ActivityIcon
+                            stroke={pathname === "/home" ? "#3D12FA" : "#BECAD6"}
+                        />
                 <Text style={{ 
                     fontSize: 10,
                     color: '#6b7280',
                     fontWeight: '600',
                     marginTop: 4
                 }}>
-                                Activity
-                            </Text>
-                        </TouchableOpacity>
+                            Activity
+                        </Text>
+                    </TouchableOpacity>
 
-                        <TouchableOpacity onPress={() => router.push("/home/qr-scanner")}>
-                            <ScannerIcon
-                                fgColor={pathname === "/home/qr-scanner" ? "#3D12FA" : "#BECAD6"}
-                            />
-                        </TouchableOpacity>
+                    <TouchableOpacity className="justify-center items-center h-[70px] px-5" onPress={() => router.push("/home/qr-scanner")}>
+                        <ScannerIcon
+                            fgColor={pathname === "/home/qr-scanner" ? "#3D12FA" : "#BECAD6"}
+                        />
+                    </TouchableOpacity>
 
-                        <TouchableOpacity
+                    <TouchableOpacity className="justify-center items-center h-[70px] px-5"
                 style={{ alignItems: 'center' }}
-                            onPress={() => router.push("/home/customers")}
-                        >
-                            <CustomersIcon
-                                stroke={pathname === "/home/customers" ? "#3D12FA" : "#BECAD6"}
-                            />
+                        onPress={() => router.push("/home/customers")}
+                    >
+                        <CustomersIcon
+                            stroke={pathname === "/home/customers" ? "#3D12FA" : "#BECAD6"}
+                        />
                 <Text style={{ 
                     fontSize: 10,
                     color: '#6b7280',
                     fontWeight: '600',
                     marginTop: 4
                 }}>
-                                Customers
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                    <Slot />
-                    </>
-                ) : (
-                    <Slot />
-                )}
-            </View>
-        </GestureDetector>
+                            Customers
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                <Slot />
+                {switchSuccess && <SuccessAnimation message="Switched Dealership Successfully" isSuccess={true} onAnimationComplete={() => dispatch(setSwitchSuccess(false))} />}
+                {customerAddSuccess && <SuccessAnimation message="Customer Created Successfully" isSuccess={true} onAnimationComplete={() => dispatch(setCustomerAddSuccess(false))} />}
+                </>
+            ) : (
+                <Slot />
+            )}
+        </View>
     );
 };
 

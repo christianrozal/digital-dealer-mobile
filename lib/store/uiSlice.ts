@@ -25,6 +25,8 @@ interface UIState {
   analyticsToDate: string | null;
     
   customerUpdateSuccess: boolean;
+  switchSuccess: boolean;
+  customerAddSuccess: boolean;
 }
 
 const initialState: UIState = {
@@ -43,6 +45,8 @@ const initialState: UIState = {
   customersToDate: null,
     
   customerUpdateSuccess: false,
+  switchSuccess: false,
+  customerAddSuccess: false,
 
   // Analytics Filter Initial State
   isAnalyticsFilterVisible: false,
@@ -165,6 +169,9 @@ const uiSlice = createSlice({
       setCustomerUpdateSuccess: (state, action: PayloadAction<boolean>) => {
         state.customerUpdateSuccess = action.payload;
       },
+    setCustomerAddSuccess: (state, action: PayloadAction<boolean>) => {
+      state.customerAddSuccess = action.payload;
+    },
 
     // Analytics Filter Reducers
     showAnalyticsFilter: (state) => {
@@ -186,6 +193,9 @@ const uiSlice = createSlice({
     resetAllAnalyticsFilters: (state) => {
       state.analyticsFromDate = null;
       state.analyticsToDate = null;
+    },
+    setSwitchSuccess: (state, action: PayloadAction<boolean>) => {
+      state.switchSuccess = action.payload;
     },
   },
 });
@@ -217,6 +227,7 @@ export const {
     setCustomersToDate,
     resetCustomersDateRange,
     setCustomerUpdateSuccess,
+    setCustomerAddSuccess,
 
   // Analytics Filter Actions
   showAnalyticsFilter,
@@ -225,6 +236,7 @@ export const {
   setAnalyticsToDate,
   resetAnalyticsDateRange,
   resetAllAnalyticsFilters,
+  setSwitchSuccess,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

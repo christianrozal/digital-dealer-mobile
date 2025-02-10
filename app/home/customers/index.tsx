@@ -13,11 +13,12 @@ import SearchIcon from "@/components/svg/searchIcon";
 import FilterIcon from "@/components/svg/filterIcon";
 import PhoneIcon from "@/components/svg/phoneIcon";
 import CloseIcon from "@/components/svg/closeIcon";
+import SuccessAnimation from "@/components/successAnimation";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/lib/store/store";
 import dayjs from "dayjs";
 import CustomersFilter from "@/components/customersFilter";
-import { hideCustomersFilter, showCustomersFilter } from "@/lib/store/uiSlice";
+import { hideCustomersFilter, showCustomersFilter, setCustomerAddSuccess } from "@/lib/store/uiSlice";
 import { router } from "expo-router";
 import { setSelectedCustomer } from "@/lib/store/customerSlice";
 import { setCurrentScanId, setCurrentCustomerId } from "@/lib/store/currentSlice";
@@ -71,6 +72,7 @@ const CustomersScreen = () => {
     customersFromDate,
     customersToDate,
   } = useSelector((state: RootState) => state.ui);
+  const customerAddSuccess = useSelector((state: RootState) => state.ui.customerAddSuccess);
 
   const [groupedCustomers, setGroupedCustomers] = useState<{
     [key: string]: AppwriteCustomer[];
@@ -306,7 +308,9 @@ const CustomersScreen = () => {
           <TouchableOpacity
             onPress={() => dispatch(showCustomersFilter())}
             className="relative"
+            style={{ padding: 10 }}
           >
+
             <FilterIcon showCircle={hasActiveFilters ? true : false} />
           </TouchableOpacity>
         </View>

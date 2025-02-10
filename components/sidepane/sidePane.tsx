@@ -37,6 +37,7 @@ import SwitchIcon from "@/components/svg/switchIcon";
 import { databases, databaseId, usersId, scansId } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { setScans } from '@/lib/store/scanSlice';
+import { setSwitchSuccess } from '@/lib/store/uiSlice';
 
 interface DealershipLevel2 {
     $id: string;
@@ -239,7 +240,6 @@ const SidePaneComponent = ({
                     dispatch(setScans(scansResponse.documents));
                 } catch (error) {
                     console.error('Error fetching scans in sidepane:', error);
-                    // Optionally, you could dispatch an error action (e.g., setScanError) here
                 }
 
                 // 4. Filter scans based on selection from fresh user data (if needed)
@@ -255,14 +255,25 @@ const SidePaneComponent = ({
                     ...freshUserData,
                     scans: filteredScans
                 }));
-
-                handleClose();
+                // Trigger success animation on the homescreen
+                dispatch(setSwitchSuccess(true));
+                // Call our animated close function that turns off the indicator after completing
+                handleCloseWithCallback();
             }
         } catch (error) {
-            // Logs removed for production
-        } finally {
+            console.error("Error switching dealership:", error);
+            // If there is an error, stop the loading indicator immediately
             setIsSwitching(false);
         }
+    };
+
+    const handleCloseWithCallback = () => {
+        translateX.value = withSpring(-SCREEN_WIDTH * 0.95, {}, (finished) => {
+            if (finished) {
+                // Once the sidepane is closed, stop the switching indicator
+                runOnJS(setIsSwitching)(false);
+            }
+        });
     };
 
     const closeGesture = Gesture.Pan()
@@ -328,8 +339,7 @@ const SidePaneComponent = ({
                 />
             </TouchableWithoutFeedback>
 
-            <GestureDetector gesture={closeGesture}>
-                <Animated.View
+            <Animated.View
                     style={[
                         {
                             position: "absolute",
@@ -458,25 +468,24 @@ const SidePaneComponent = ({
                             </View>
 
                             {/* Bottom Container: Profile and Logout */}
-                            <View className="flex-row mx-auto gap-10">
-                                <TouchableOpacity onPress={handleProfilePress}>
+                            <View className="flex-row mx-auto gap-0">
+                                <TouchableOpacity onPress={handleProfilePress} className="justify-center items-center" style={{ paddingVertical: 20, paddingHorizontal: 20 }}>
                                     <View className="flex-row gap-1 items-center">
                                         <ProfileIcon />
-                                        <Text className="text-xs font-medium">Profile</Text>
+                                        <Text className="text-sm text-gray-600 font-medium">Profile</Text>
                                     </View>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity onPress={handleLogout}>
+                                <TouchableOpacity onPress={handleLogout} className="justify-center items-center" style={{ paddingVertical: 20, paddingHorizontal: 20 }}>
                                     <View className="flex-row gap-1 items-center">
                                         <LogoutIcon />
-                                        <Text className="text-xs font-medium">Logout</Text>
+                                        <Text className="text-sm text-gray-600 font-medium">Logout</Text>
                                     </View>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     </View>
                 </Animated.View>
-            </GestureDetector>
         </>
     );
 };

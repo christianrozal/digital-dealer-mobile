@@ -104,7 +104,7 @@ const SelectedCustomerScreen = () => {
 
   return (
     <>
-      {showSuccess && <SuccessAnimation message='Customer Profile Updated' />}
+      {showSuccess && <SuccessAnimation message='Customer Profile Updated' isSuccess={true} onAnimationComplete={() => dispatch(setCustomerUpdateSuccess(false))} />}
       <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
         <View>
           {/* Header */}
@@ -119,10 +119,10 @@ const SelectedCustomerScreen = () => {
           </View>
           <View className="px-4">
             <TouchableOpacity 
-              className="flex-row gap-1 ml-auto p-2 z-10 mt-8"
+              className="flex-row items-center gap-1 ml-auto p-2 z-10 mt-8"
               onPress={() => { router.push("/home/customers/customer-details/edit") }}
             >
-              <EditIcon /> <Text className="text-xs text-gray-300">Edit...</Text>
+              <EditIcon /><Text className="text-xs text-gray-300">Edit...</Text>
             </TouchableOpacity>
             <View
             className="bg-white rounded-md justify-center items-center"

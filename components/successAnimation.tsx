@@ -40,12 +40,17 @@ const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
   }, [translateY, onAnimationComplete, message]);
 
   return (
-    <Animated.View style={{ transform: [{ translateY }] }} className="w-full z-30 absolute">
+    <Animated.View style={{ zIndex: 1000, transform: [{ translateY }] }} className="w-full absolute">
       <View
-        className={`flex-row items-center justify-center gap-3 w-4/5 mx-auto bg-white rounded-lg p-3 border ${isSuccess ? 'border-color9' : 'border-red-500'}`}
-        style={{ boxShadow: '0px 4px 10px 0px rgba(7, 170, 48, 0.25)' }}
+        className="flex-row items-center justify-center gap-3 mx-auto rounded-lg p-3"
+        style={{ backgroundColor: 'white', borderWidth: 1, borderColor: isSuccess ? '#84C953' : '#FF0000', width: '80%', boxShadow: isSuccess ? '0px 4px 10px 0px rgba(7, 170, 48, 0.25)' : '0px 4px 10px 0px rgba(239, 68, 68, 0.25)'}}
       >
-        <CheckIcon /> <Text className={`text-sm ${isSuccess ? 'text-[#018221]' : 'text-red-500'}`}>{message}</Text>
+
+
+
+
+
+        <CheckIcon /><Text className={`text-sm ${isSuccess ? 'text-[#018221]' : 'text-red-500'}`}>{message}</Text>
       </View>
     </Animated.View>
   );

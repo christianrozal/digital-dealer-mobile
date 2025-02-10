@@ -11,8 +11,8 @@ import { storage, databases } from '@/lib/appwrite';
 import * as ImagePicker from 'expo-image-picker';
 import { setUserData } from '@/lib/store/userSlice';
 import { setCustomerUpdateSuccess } from '@/lib/store/uiSlice';
-import { databaseId, customersId, projectId, bucketId } from '@/lib/appwrite';
-import { ID } from 'appwrite';
+import { databaseId, customersId, bucketId } from '@/lib/appwrite';
+import { ID } from 'react-native-appwrite';
 
 interface AppwriteCustomer {
   $id: string;

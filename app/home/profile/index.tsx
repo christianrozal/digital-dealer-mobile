@@ -45,10 +45,11 @@ const ProfileScreen = () => {
 
     return (
         <>
-            {showSuccess && <SuccessAnimation message='Profile Updated' onAnimationComplete={handleAnimationComplete} />}
+            {showSuccess && <SuccessAnimation message='Profile Updated' isSuccess={true} onAnimationComplete={handleAnimationComplete} />}
             <View className="pt-7 px-7 pb-7 h-full justify-between gap-5">
                 <View>
                     {/* Header */}
+
                     <View className="flex-row w-full justify-between items-center">
                         <TouchableOpacity onPress={() => router.push("/home")}>
                             <BackArrowIcon />
@@ -63,9 +64,8 @@ const ProfileScreen = () => {
                     </View>
 
                     <View className="px-4">
-                        <TouchableOpacity className="flex-row gap-1 ml-auto  p-2 z-10 mt-5" onPress={() => router.push("/home/profile/edit")}>
-                            <EditIcon /> 
-                            <Text className="text-xs text-gray-300">Edit...</Text>
+                        <TouchableOpacity className="flex-row items-center gap-1 ml-auto  p-2 z-10 mt-5" onPress={() => router.push("/home/profile/edit")}>
+                            <EditIcon /><Text className="text-xs text-gray-300">Edit...</Text>
                         </TouchableOpacity>
                         <View
                             className="bg-white rounded-md justify-center items-center"

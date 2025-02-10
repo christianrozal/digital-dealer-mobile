@@ -111,6 +111,7 @@ function SkeletonLoader() {
 const CustomerLogScreen = () => {
     const currentCustomerId = useSelector((state: RootState) => state.current.currentCustomerId);
     const currentScanId = useSelector((state: RootState) => state.current.currentScanId);
+    const currentUserId = useSelector((state: RootState) => state.current.currentUserId || '');
     const userData = useSelector((state: RootState) => state.user.data);
     const scanData = useSelector((state: RootState) => state.scan.data);
     const commentData = useSelector((state: RootState) => state.comment.data);
@@ -278,7 +279,6 @@ const CustomerLogScreen = () => {
                 interestStatus: value || "Hot",
                 interestedIn: interestedIn[0] || "Buying",
                 followUpDate: localFollowUpDate || dayjs().format('YYYY-MM-DDTHH:mm:ss'),
-                users: getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users),
             };
             console.log("handleUpdate: updateData prepared:", updateData);
 
@@ -309,7 +309,7 @@ const CustomerLogScreen = () => {
                     {
                         comment: comment.trim(),
                         customers: currentCustomerId,
-                        users: getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users),
+                        users: currentUserId,
                     }
                 );
 
@@ -601,7 +601,7 @@ const CustomerLogScreen = () => {
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                zIndex: 50,
+                zIndex: 1000,
                 width: '100%',
                 height: '100%',
                 backgroundColor: 'black',
@@ -653,10 +653,11 @@ const CustomerLogScreen = () => {
                 {/* Interest in checkbox group*/}
                 <View className="mt-5">
                     <Text className="text-[10px] text-gray-500">Interested In</Text>
-                    <View className="flex-row gap-4 mt-2">
+                    <View className="flex-row">
                         {/* Buying*/}
                         <TouchableOpacity
                             className="flex-row items-center gap-2"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleCheckboxChange("Buying")}
                         >
                             <Checkbox
@@ -669,6 +670,7 @@ const CustomerLogScreen = () => {
                         {/* Selling*/}
                         <TouchableOpacity
                             className="flex-row items-center gap-2"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleCheckboxChange("Selling")}
                         >
                             <Checkbox
@@ -681,6 +683,7 @@ const CustomerLogScreen = () => {
                         {/* Financing*/}
                         <TouchableOpacity
                             className="flex-row items-center gap-2"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleCheckboxChange("Financing")}
                         >
                             <Checkbox
@@ -693,6 +696,7 @@ const CustomerLogScreen = () => {
                         {/* Purchased*/}
                         <TouchableOpacity
                             className="flex-row items-center gap-2"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleCheckboxChange("Purchased")}
                         >
                             <Checkbox
@@ -708,9 +712,10 @@ const CustomerLogScreen = () => {
                 {/* Interest status radio group*/}
                 <View className="mt-3">
                     <Text className="text-[10px] text-gray-500">Interest Status</Text>
-                    <View className="flex-row gap-4 mt-2">
+                    <View className="flex-row">
                         <TouchableOpacity
                             className="flex-row items-center gap-1"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleInterestStatusChange("Hot")}
                         >
                             <Radio
@@ -724,6 +729,7 @@ const CustomerLogScreen = () => {
                         </TouchableOpacity>
                         <TouchableOpacity
                             className="flex-row items-center gap-1"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleInterestStatusChange("Warm")}
                         >
                             <Radio
@@ -737,6 +743,7 @@ const CustomerLogScreen = () => {
                         </TouchableOpacity>
                         <TouchableOpacity
                             className="flex-row items-center gap-1"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleInterestStatusChange("Cold")}
                         >
                             <Radio
@@ -750,6 +757,7 @@ const CustomerLogScreen = () => {
                         </TouchableOpacity>
                         <TouchableOpacity
                             className="flex-row items-center gap-1"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleInterestStatusChange("Not Interested")}
                         >
                             <Radio
@@ -763,6 +771,7 @@ const CustomerLogScreen = () => {
                         </TouchableOpacity>
                         <TouchableOpacity
                             className="flex-row items-center gap-1"
+                            style={{ paddingVertical: 10, paddingHorizontal: 5 }}
                             onPress={() => handleInterestStatusChange("Bought")}
                         >
                             <Radio
@@ -940,7 +949,7 @@ const CustomerLogScreen = () => {
                                                         </View>
                                                     </View>
                                                     {/* Only show dots menu for user's own comments */}
-                                                    {getUserId(comment.users) === getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users) && (
+                                                    {getUserId(comment.users) === currentUserId && (
                                                         <TouchableOpacity 
                                                             onPress={() => handleCommentOptions(comment.$id)}
                                                         >
@@ -954,7 +963,7 @@ const CustomerLogScreen = () => {
                                                 </View>
                                                 <View>
                                                     {/* Only allow editing for user's own comments */}
-                                                    {editingCommentId === comment.$id && getUserId(comment.users) === getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users) ? (
+                                                    {editingCommentId === comment.$id && getUserId(comment.users) === currentUserId ? (
                                                         <View className="mt-2">
                                                             <TextInput
                                                                 value={editedComment}
@@ -993,7 +1002,7 @@ const CustomerLogScreen = () => {
                                                 </View>
                                             </View>
                                             {/* Only show options menu for user's own comments */}
-                                            {showOptions === comment.$id && getUserId(comment.users) === getUserId(userData?.scans?.find(scan => scan.$id === currentScanId)?.users) && (
+                                            {showOptions === comment.$id && getUserId(comment.users) === currentUserId && (
                                                 <>
                                                     <TouchableOpacity 
                                                         style={{

@@ -79,6 +79,7 @@ const HomeScreen = () => {
   const userData = useSelector((state: RootState) => state.user.data) as UserData;
   const currentDealershipLevel2Id = useSelector((state: RootState) => state.current.currentDealershipLevel2Id);
   const currentDealershipLevel3Id = useSelector((state: RootState) => state.current.currentDealershipLevel3Id);
+  const currentUserId = useSelector((state: RootState) => state.current.currentUserId);
   const {
     isActivitiesFilterVisible,
     activitiesSelectedInterestedIns,
@@ -111,6 +112,10 @@ const HomeScreen = () => {
       inputRef.current?.blur();
     }
   }, [isSearching]);
+
+  useEffect(() => {
+    console.log('Current User ID:', currentUserId);
+  }, [currentUserId]);
 
   const filteredScans = scans
     ?.filter((scan) => {
@@ -287,11 +292,12 @@ const HomeScreen = () => {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView 
-        className="flex-1 bg-white px-5 pt-16"
+        className="flex-1 bg-white px-5"
         ref={scrollViewRef}
-        style={{marginBottom: 80}}
-        contentInset={{ top: 80 }}
-        contentOffset={{ x: 0, y: -80 }}
+        contentContainerStyle={{ 
+          paddingTop: 64,
+          paddingBottom: 80,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -309,6 +315,7 @@ const HomeScreen = () => {
             <TouchableOpacity
               onPress={() => dispatch(showActivitiesFilter())}
               className="relative"
+              style={{ padding: 10 }}
             >
               <FilterIcon showCircle={hasActiveFilters ? true : false} />
             </TouchableOpacity>
