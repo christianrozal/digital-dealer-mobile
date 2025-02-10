@@ -1086,7 +1086,7 @@ const CustomerLogScreen = () => {
                     zIndex: 1000, // Ensure overlay is on top
                 }}
             >
-                <ActivityIndicator size="large" color="#007BFF" /> {/* Adjust color as needed */}
+                <ActivityIndicator size="large" color="#007BFF" />
             </View>
         )}
         </>

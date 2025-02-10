@@ -387,8 +387,8 @@ const SidePaneComponent = ({
                                             </Text>
                                         )}
                                     </View>
-                                    <View>
-                                        <Text className="text-sm font-medium">{userData?.name || 'No Name'}</Text>
+                                    <View className="gap-1">
+                                        <Text className="text-base font-medium">{userData?.name || 'No Name'}</Text>
                                         <Text className="text-xs text-gray-500">Sales Consultant</Text>
                                     </View>
                                 </View>

@@ -147,11 +147,11 @@ const QrScannerScreen = () => {
         barcodeScannerSettings={{
           barcodeTypes: ["qr", "pdf417"],
         }}
-        className="flex-1"
+        style={{ height: '100%' }}
       >
         <TouchableOpacity
           onPress={() => router.push("/home")}
-          className="absolute top-5 right-5 z-10 opacity-80">
+          className="absolute top-5 right-5 z-10 opacity-50">
           <CloseIcon stroke="white" width={30} height={30}/>
         </TouchableOpacity>
 
@@ -162,7 +162,7 @@ const QrScannerScreen = () => {
             <View className="w-64" />
             <View className="flex-1 bg-black opacity-50" />
           </View>
-          <View className="flex-1 bg-black opacity-50 h-auto" />
+          <View className="flex-1 bg-black opacity-50" />
         </View>
 
         <View className="mt-[25vh]">

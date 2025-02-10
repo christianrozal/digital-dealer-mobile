@@ -17,7 +17,7 @@ const CloseIcon: React.FC<CloseIconProps> = ({
       <Path
         d="M17.1846 7.37866L7.8125 16.7507M17.1846 16.7507L7.8125 7.37866"
         stroke={stroke}
-        strokeWidth="1.56201"
+        strokeWidth="1"
         strokeLinecap="round"
       />
     </Svg>
